@@ -1,0 +1,889 @@
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 4
+   9              		.eabi_attribute 34, 1
+  10              		.eabi_attribute 18, 4
+  11              		.file	"simpleserial-gost.c"
+  12              		.text
+  13              	.Ltext0:
+  14              		.cfi_sections	.debug_frame
+  15              		.section	.text.reset,"ax",%progbits
+  16              		.align	1
+  17              		.global	reset
+  18              		.arch armv7e-m
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu softvfp
+  24              	reset:
+  25              	.LVL0:
+  26              	.LFB5:
+  27              		.file 1 "simpleserial-gost.c"
+   1:simpleserial-gost.c **** #include "gost-independant.h"
+   2:simpleserial-gost.c **** #include "hal.h"
+   3:simpleserial-gost.c **** #include "simpleserial.h"
+   4:simpleserial-gost.c **** #include <stdint.h>
+   5:simpleserial-gost.c **** #include <stdlib.h>
+   6:simpleserial-gost.c **** 
+   7:simpleserial-gost.c **** uint8_t get_mask(uint8_t* m, uint8_t len)
+   8:simpleserial-gost.c **** {
+   9:simpleserial-gost.c ****   gost_indep_mask(m, len);
+  10:simpleserial-gost.c ****   return 0x00;
+  11:simpleserial-gost.c **** }
+  12:simpleserial-gost.c **** 
+  13:simpleserial-gost.c **** uint8_t get_key(uint8_t* k, uint8_t len)
+  14:simpleserial-gost.c **** {
+  15:simpleserial-gost.c **** 	gost_indep_key(k);
+  16:simpleserial-gost.c **** 	return 0x00;
+  17:simpleserial-gost.c **** }
+  18:simpleserial-gost.c **** 
+  19:simpleserial-gost.c **** uint8_t get_pt(uint8_t* pt, uint8_t len)
+  20:simpleserial-gost.c **** {
+  21:simpleserial-gost.c ****     gost_indep_enc_pretrigger(pt);
+  22:simpleserial-gost.c **** 
+  23:simpleserial-gost.c **** 	trigger_high();
+  24:simpleserial-gost.c **** 
+  25:simpleserial-gost.c ****   #ifdef ADD_JITTER
+  26:simpleserial-gost.c ****   for (volatile uint8_t k = 0; k < (*pt & 0x0F); k++);
+  27:simpleserial-gost.c ****   #endif
+  28:simpleserial-gost.c **** 
+  29:simpleserial-gost.c **** 	gost_indep_enc(pt); /* encrypting the data block */
+  30:simpleserial-gost.c **** 	trigger_low();
+  31:simpleserial-gost.c **** 
+  32:simpleserial-gost.c ****     gost_indep_enc_posttrigger(pt);
+  33:simpleserial-gost.c **** 
+  34:simpleserial-gost.c **** 	simpleserial_put('r', 16, pt);
+  35:simpleserial-gost.c **** 	return 0x00;
+  36:simpleserial-gost.c **** }
+  37:simpleserial-gost.c **** 
+  38:simpleserial-gost.c **** uint8_t reset(uint8_t* x, uint8_t len)
+  39:simpleserial-gost.c **** {
+  28              		.loc 1 39 1 view -0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  40:simpleserial-gost.c ****     // Reset key here if needed
+  41:simpleserial-gost.c **** 	return 0x00;
+  33              		.loc 1 41 2 view .LVU1
+  42:simpleserial-gost.c **** }
+  34              		.loc 1 42 1 is_stmt 0 view .LVU2
+  35 0000 0020     		movs	r0, #0
+  36              	.LVL1:
+  37              		.loc 1 42 1 view .LVU3
+  38 0002 7047     		bx	lr
+  39              		.cfi_endproc
+  40              	.LFE5:
+  42              		.section	.text.enc_multi_setnum,"ax",%progbits
+  43              		.align	1
+  44              		.global	enc_multi_setnum
+  45              		.syntax unified
+  46              		.thumb
+  47              		.thumb_func
+  48              		.fpu softvfp
+  50              	enc_multi_setnum:
+  51              	.LVL2:
+  52              	.LFB7:
+  43:simpleserial-gost.c **** 
+  44:simpleserial-gost.c **** static uint16_t num_encryption_rounds = 10;
+  45:simpleserial-gost.c **** 
+  46:simpleserial-gost.c **** uint8_t enc_multi_getpt(uint8_t* pt, uint8_t len)
+  47:simpleserial-gost.c **** {
+  48:simpleserial-gost.c ****     gost_indep_enc_pretrigger(pt);
+  49:simpleserial-gost.c **** 
+  50:simpleserial-gost.c ****     for(unsigned int i = 0; i < num_encryption_rounds; i++){
+  51:simpleserial-gost.c ****         trigger_high();
+  52:simpleserial-gost.c ****         gost_indep_enc(pt);
+  53:simpleserial-gost.c ****         trigger_low();
+  54:simpleserial-gost.c ****     }
+  55:simpleserial-gost.c **** 
+  56:simpleserial-gost.c ****     gost_indep_enc_posttrigger(pt);
+  57:simpleserial-gost.c **** 	simpleserial_put('r', 16, pt);
+  58:simpleserial-gost.c ****     return 0;
+  59:simpleserial-gost.c **** }
+  60:simpleserial-gost.c **** 
+  61:simpleserial-gost.c **** uint8_t enc_multi_setnum(uint8_t* t, uint8_t len)
+  62:simpleserial-gost.c **** {
+  53              		.loc 1 62 1 is_stmt 1 view -0
+  54              		.cfi_startproc
+  55              		@ args = 0, pretend = 0, frame = 0
+  56              		@ frame_needed = 0, uses_anonymous_args = 0
+  57              		@ link register save eliminated.
+  63:simpleserial-gost.c ****     //Assumes user entered a number like [0, 200] to mean "200"
+  64:simpleserial-gost.c ****     //which is most sane looking for humans I think
+  65:simpleserial-gost.c ****     num_encryption_rounds = t[1];
+  58              		.loc 1 65 5 view .LVU5
+  66:simpleserial-gost.c ****     num_encryption_rounds |= t[0] << 8;
+  59              		.loc 1 66 5 view .LVU6
+  60              		.loc 1 66 27 is_stmt 0 view .LVU7
+  61 0000 0388     		ldrh	r3, [r0]	@ unaligned
+  62 0002 024A     		ldr	r2, .L3
+  63 0004 5BBA     		rev16	r3, r3
+  64 0006 1380     		strh	r3, [r2]	@ movhi
+  67:simpleserial-gost.c ****     return 0;
+  65              		.loc 1 67 5 is_stmt 1 view .LVU8
+  68:simpleserial-gost.c **** }
+  66              		.loc 1 68 1 is_stmt 0 view .LVU9
+  67 0008 0020     		movs	r0, #0
+  68              	.LVL3:
+  69              		.loc 1 68 1 view .LVU10
+  70 000a 7047     		bx	lr
+  71              	.L4:
+  72              		.align	2
+  73              	.L3:
+  74 000c 00000000 		.word	.LANCHOR0
+  75              		.cfi_endproc
+  76              	.LFE7:
+  78              		.section	.text.get_mask,"ax",%progbits
+  79              		.align	1
+  80              		.global	get_mask
+  81              		.syntax unified
+  82              		.thumb
+  83              		.thumb_func
+  84              		.fpu softvfp
+  86              	get_mask:
+  87              	.LVL4:
+  88              	.LFB2:
+   8:simpleserial-gost.c ****   gost_indep_mask(m, len);
+  89              		.loc 1 8 1 is_stmt 1 view -0
+  90              		.cfi_startproc
+  91              		@ args = 0, pretend = 0, frame = 0
+  92              		@ frame_needed = 0, uses_anonymous_args = 0
+   9:simpleserial-gost.c ****   return 0x00;
+  93              		.loc 1 9 3 view .LVU12
+   8:simpleserial-gost.c ****   gost_indep_mask(m, len);
+  94              		.loc 1 8 1 is_stmt 0 view .LVU13
+  95 0000 08B5     		push	{r3, lr}
+  96              	.LCFI0:
+  97              		.cfi_def_cfa_offset 8
+  98              		.cfi_offset 3, -8
+  99              		.cfi_offset 14, -4
+   9:simpleserial-gost.c ****   return 0x00;
+ 100              		.loc 1 9 3 view .LVU14
+ 101 0002 FFF7FEFF 		bl	gost_indep_mask
+ 102              	.LVL5:
+  10:simpleserial-gost.c **** }
+ 103              		.loc 1 10 3 is_stmt 1 view .LVU15
+  11:simpleserial-gost.c **** 
+ 104              		.loc 1 11 1 is_stmt 0 view .LVU16
+ 105 0006 0020     		movs	r0, #0
+ 106 0008 08BD     		pop	{r3, pc}
+ 107              		.cfi_endproc
+ 108              	.LFE2:
+ 110              		.section	.text.get_key,"ax",%progbits
+ 111              		.align	1
+ 112              		.global	get_key
+ 113              		.syntax unified
+ 114              		.thumb
+ 115              		.thumb_func
+ 116              		.fpu softvfp
+ 118              	get_key:
+ 119              	.LVL6:
+ 120              	.LFB3:
+  14:simpleserial-gost.c **** 	gost_indep_key(k);
+ 121              		.loc 1 14 1 is_stmt 1 view -0
+ 122              		.cfi_startproc
+ 123              		@ args = 0, pretend = 0, frame = 0
+ 124              		@ frame_needed = 0, uses_anonymous_args = 0
+  15:simpleserial-gost.c **** 	return 0x00;
+ 125              		.loc 1 15 2 view .LVU18
+  14:simpleserial-gost.c **** 	gost_indep_key(k);
+ 126              		.loc 1 14 1 is_stmt 0 view .LVU19
+ 127 0000 08B5     		push	{r3, lr}
+ 128              	.LCFI1:
+ 129              		.cfi_def_cfa_offset 8
+ 130              		.cfi_offset 3, -8
+ 131              		.cfi_offset 14, -4
+  15:simpleserial-gost.c **** 	return 0x00;
+ 132              		.loc 1 15 2 view .LVU20
+ 133 0002 FFF7FEFF 		bl	gost_indep_key
+ 134              	.LVL7:
+  16:simpleserial-gost.c **** }
+ 135              		.loc 1 16 2 is_stmt 1 view .LVU21
+  17:simpleserial-gost.c **** 
+ 136              		.loc 1 17 1 is_stmt 0 view .LVU22
+ 137 0006 0020     		movs	r0, #0
+ 138 0008 08BD     		pop	{r3, pc}
+ 139              		.cfi_endproc
+ 140              	.LFE3:
+ 142              		.section	.text.get_pt,"ax",%progbits
+ 143              		.align	1
+ 144              		.global	get_pt
+ 145              		.syntax unified
+ 146              		.thumb
+ 147              		.thumb_func
+ 148              		.fpu softvfp
+ 150              	get_pt:
+ 151              	.LVL8:
+ 152              	.LFB4:
+  20:simpleserial-gost.c ****     gost_indep_enc_pretrigger(pt);
+ 153              		.loc 1 20 1 is_stmt 1 view -0
+ 154              		.cfi_startproc
+ 155              		@ args = 0, pretend = 0, frame = 0
+ 156              		@ frame_needed = 0, uses_anonymous_args = 0
+  21:simpleserial-gost.c **** 
+ 157              		.loc 1 21 5 view .LVU24
+  20:simpleserial-gost.c ****     gost_indep_enc_pretrigger(pt);
+ 158              		.loc 1 20 1 is_stmt 0 view .LVU25
+ 159 0000 10B5     		push	{r4, lr}
+ 160              	.LCFI2:
+ 161              		.cfi_def_cfa_offset 8
+ 162              		.cfi_offset 4, -8
+ 163              		.cfi_offset 14, -4
+  20:simpleserial-gost.c ****     gost_indep_enc_pretrigger(pt);
+ 164              		.loc 1 20 1 view .LVU26
+ 165 0002 0446     		mov	r4, r0
+  21:simpleserial-gost.c **** 
+ 166              		.loc 1 21 5 view .LVU27
+ 167 0004 FFF7FEFF 		bl	gost_indep_enc_pretrigger
+ 168              	.LVL9:
+  23:simpleserial-gost.c **** 
+ 169              		.loc 1 23 2 is_stmt 1 view .LVU28
+ 170 0008 FFF7FEFF 		bl	trigger_high
+ 171              	.LVL10:
+  29:simpleserial-gost.c **** 	trigger_low();
+ 172              		.loc 1 29 2 view .LVU29
+ 173 000c 2046     		mov	r0, r4
+ 174 000e FFF7FEFF 		bl	gost_indep_enc
+ 175              	.LVL11:
+  30:simpleserial-gost.c **** 
+ 176              		.loc 1 30 2 view .LVU30
+ 177 0012 FFF7FEFF 		bl	trigger_low
+ 178              	.LVL12:
+  32:simpleserial-gost.c **** 
+ 179              		.loc 1 32 5 view .LVU31
+ 180 0016 2046     		mov	r0, r4
+ 181 0018 FFF7FEFF 		bl	gost_indep_enc_posttrigger
+ 182              	.LVL13:
+  34:simpleserial-gost.c **** 	return 0x00;
+ 183              		.loc 1 34 2 view .LVU32
+ 184 001c 2246     		mov	r2, r4
+ 185 001e 1021     		movs	r1, #16
+ 186 0020 7220     		movs	r0, #114
+ 187 0022 FFF7FEFF 		bl	simpleserial_put
+ 188              	.LVL14:
+  35:simpleserial-gost.c **** }
+ 189              		.loc 1 35 2 view .LVU33
+  36:simpleserial-gost.c **** 
+ 190              		.loc 1 36 1 is_stmt 0 view .LVU34
+ 191 0026 0020     		movs	r0, #0
+ 192 0028 10BD     		pop	{r4, pc}
+  36:simpleserial-gost.c **** 
+ 193              		.loc 1 36 1 view .LVU35
+ 194              		.cfi_endproc
+ 195              	.LFE4:
+ 197              		.section	.text.enc_multi_getpt,"ax",%progbits
+ 198              		.align	1
+ 199              		.global	enc_multi_getpt
+ 200              		.syntax unified
+ 201              		.thumb
+ 202              		.thumb_func
+ 203              		.fpu softvfp
+ 205              	enc_multi_getpt:
+ 206              	.LVL15:
+ 207              	.LFB6:
+  47:simpleserial-gost.c ****     gost_indep_enc_pretrigger(pt);
+ 208              		.loc 1 47 1 is_stmt 1 view -0
+ 209              		.cfi_startproc
+ 210              		@ args = 0, pretend = 0, frame = 0
+ 211              		@ frame_needed = 0, uses_anonymous_args = 0
+  48:simpleserial-gost.c **** 
+ 212              		.loc 1 48 5 view .LVU37
+  47:simpleserial-gost.c ****     gost_indep_enc_pretrigger(pt);
+ 213              		.loc 1 47 1 is_stmt 0 view .LVU38
+ 214 0000 70B5     		push	{r4, r5, r6, lr}
+ 215              	.LCFI3:
+ 216              		.cfi_def_cfa_offset 16
+ 217              		.cfi_offset 4, -16
+ 218              		.cfi_offset 5, -12
+ 219              		.cfi_offset 6, -8
+ 220              		.cfi_offset 14, -4
+  47:simpleserial-gost.c ****     gost_indep_enc_pretrigger(pt);
+ 221              		.loc 1 47 1 view .LVU39
+ 222 0002 0446     		mov	r4, r0
+  48:simpleserial-gost.c **** 
+ 223              		.loc 1 48 5 view .LVU40
+ 224 0004 FFF7FEFF 		bl	gost_indep_enc_pretrigger
+ 225              	.LVL16:
+  50:simpleserial-gost.c ****         trigger_high();
+ 226              		.loc 1 50 5 is_stmt 1 view .LVU41
+ 227              	.LBB2:
+  50:simpleserial-gost.c ****         trigger_high();
+ 228              		.loc 1 50 9 view .LVU42
+  50:simpleserial-gost.c ****         trigger_high();
+ 229              		.loc 1 50 31 is_stmt 0 view .LVU43
+ 230 0008 0B4E     		ldr	r6, .L11
+  50:simpleserial-gost.c ****         trigger_high();
+ 231              		.loc 1 50 22 view .LVU44
+ 232 000a 0025     		movs	r5, #0
+ 233              	.LVL17:
+ 234              	.L9:
+  50:simpleserial-gost.c ****         trigger_high();
+ 235              		.loc 1 50 29 is_stmt 1 discriminator 1 view .LVU45
+  50:simpleserial-gost.c ****         trigger_high();
+ 236              		.loc 1 50 31 is_stmt 0 discriminator 1 view .LVU46
+ 237 000c 3388     		ldrh	r3, [r6]
+  50:simpleserial-gost.c ****         trigger_high();
+ 238              		.loc 1 50 5 discriminator 1 view .LVU47
+ 239 000e AB42     		cmp	r3, r5
+ 240 0010 09D8     		bhi	.L10
+ 241              	.LBE2:
+  56:simpleserial-gost.c **** 	simpleserial_put('r', 16, pt);
+ 242              		.loc 1 56 5 is_stmt 1 view .LVU48
+ 243 0012 2046     		mov	r0, r4
+ 244 0014 FFF7FEFF 		bl	gost_indep_enc_posttrigger
+ 245              	.LVL18:
+  57:simpleserial-gost.c ****     return 0;
+ 246              		.loc 1 57 2 view .LVU49
+ 247 0018 2246     		mov	r2, r4
+ 248 001a 1021     		movs	r1, #16
+ 249 001c 7220     		movs	r0, #114
+ 250 001e FFF7FEFF 		bl	simpleserial_put
+ 251              	.LVL19:
+  58:simpleserial-gost.c **** }
+ 252              		.loc 1 58 5 view .LVU50
+  59:simpleserial-gost.c **** 
+ 253              		.loc 1 59 1 is_stmt 0 view .LVU51
+ 254 0022 0020     		movs	r0, #0
+ 255 0024 70BD     		pop	{r4, r5, r6, pc}
+ 256              	.LVL20:
+ 257              	.L10:
+ 258              	.LBB3:
+  51:simpleserial-gost.c ****         gost_indep_enc(pt);
+ 259              		.loc 1 51 9 is_stmt 1 discriminator 3 view .LVU52
+ 260 0026 FFF7FEFF 		bl	trigger_high
+ 261              	.LVL21:
+  52:simpleserial-gost.c ****         trigger_low();
+ 262              		.loc 1 52 9 discriminator 3 view .LVU53
+ 263 002a 2046     		mov	r0, r4
+ 264 002c FFF7FEFF 		bl	gost_indep_enc
+ 265              	.LVL22:
+  53:simpleserial-gost.c ****     }
+ 266              		.loc 1 53 9 discriminator 3 view .LVU54
+  50:simpleserial-gost.c ****         trigger_high();
+ 267              		.loc 1 50 57 is_stmt 0 discriminator 3 view .LVU55
+ 268 0030 0135     		adds	r5, r5, #1
+ 269              	.LVL23:
+  53:simpleserial-gost.c ****     }
+ 270              		.loc 1 53 9 discriminator 3 view .LVU56
+ 271 0032 FFF7FEFF 		bl	trigger_low
+ 272              	.LVL24:
+  50:simpleserial-gost.c ****         trigger_high();
+ 273              		.loc 1 50 56 is_stmt 1 discriminator 3 view .LVU57
+  50:simpleserial-gost.c ****         trigger_high();
+ 274              		.loc 1 50 56 is_stmt 0 discriminator 3 view .LVU58
+ 275 0036 E9E7     		b	.L9
+ 276              	.L12:
+ 277              		.align	2
+ 278              	.L11:
+ 279 0038 00000000 		.word	.LANCHOR0
+ 280              	.LBE3:
+ 281              		.cfi_endproc
+ 282              	.LFE6:
+ 284              		.section	.text.led_ok,"ax",%progbits
+ 285              		.align	1
+ 286              		.weak	led_ok
+ 287              		.syntax unified
+ 288              		.thumb
+ 289              		.thumb_func
+ 290              		.fpu softvfp
+ 292              	led_ok:
+ 293              	.LVL25:
+ 294              	.LFB0:
+ 295              		.file 2 ".././hal/hal.h"
+   1:.././hal/hal.h **** /*
+   2:.././hal/hal.h ****     This file is part of the ChipWhisperer Example Targets
+   3:.././hal/hal.h ****     Copyright (C) 2012-2015 NewAE Technology Inc.
+   4:.././hal/hal.h **** 
+   5:.././hal/hal.h ****     This program is free software: you can redistribute it and/or modify
+   6:.././hal/hal.h ****     it under the terms of the GNU General Public License as published by
+   7:.././hal/hal.h ****     the Free Software Foundation, either version 3 of the License, or
+   8:.././hal/hal.h ****     (at your option) any later version.
+   9:.././hal/hal.h **** 
+  10:.././hal/hal.h ****     This program is distributed in the hope that it will be useful,
+  11:.././hal/hal.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  12:.././hal/hal.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  13:.././hal/hal.h ****     GNU General Public License for more details.
+  14:.././hal/hal.h **** 
+  15:.././hal/hal.h ****     You should have received a copy of the GNU General Public License
+  16:.././hal/hal.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  17:.././hal/hal.h **** */
+  18:.././hal/hal.h **** 
+  19:.././hal/hal.h **** #ifndef HAL_H_
+  20:.././hal/hal.h **** #define HAL_H_
+  21:.././hal/hal.h **** 
+  22:.././hal/hal.h **** #include <stdint.h>
+  23:.././hal/hal.h **** 
+  24:.././hal/hal.h **** void platform_init(void);
+  25:.././hal/hal.h **** 
+  26:.././hal/hal.h **** //PLATFORM Define Types
+  27:.././hal/hal.h **** #define CW301_AVR      1
+  28:.././hal/hal.h **** #define CW301_XMEGA    2
+  29:.././hal/hal.h **** #define CW303          3
+  30:.././hal/hal.h **** #define CW304          4
+  31:.././hal/hal.h **** #define CW308_MEGARF   8
+  32:.././hal/hal.h **** #define CW308_PIC24FJ  10
+  33:.././hal/hal.h **** #define CW308_SAM4L    11
+  34:.././hal/hal.h **** #define CW308_SI4010   12
+  35:.././hal/hal.h **** #define CW308_MPC5748G 13
+  36:.././hal/hal.h **** #define CW308_STM32F0  14
+  37:.././hal/hal.h **** #define CW308_STM32F1  15
+  38:.././hal/hal.h **** #define CW308_STM32F2  16
+  39:.././hal/hal.h **** #define CW308_STM32F3  17
+  40:.././hal/hal.h **** #define CW308_STM32F4  18
+  41:.././hal/hal.h **** #define CW308_CC2538   19
+  42:.././hal/hal.h **** #define CW308_K24F     20
+  43:.././hal/hal.h **** #define CW308_NRF52840 21
+  44:.././hal/hal.h **** #define CW308_AURIX    22
+  45:.././hal/hal.h **** #define CW308_SAML11   23
+  46:.././hal/hal.h **** #define CW308_EFM32TG11B 24
+  47:.././hal/hal.h **** #define CW308_K82F     25
+  48:.././hal/hal.h **** #define CW308_LPC55S6X 26
+  49:.././hal/hal.h **** #define CW308_PSOC62   27
+  50:.././hal/hal.h **** #define CW308_IMXRT1062 28
+  51:.././hal/hal.h **** #define CW308_FE310    29
+  52:.././hal/hal.h **** #define CW308_EFR32MG21A  30
+  53:.././hal/hal.h **** #define CW308_EFM32GG11  31
+  54:.././hal/hal.h **** #define CW308_STM32L5  32
+  55:.././hal/hal.h **** #define CW308_STM32L4  33
+  56:.././hal/hal.h **** #define CW308_RX65N  34
+  57:.././hal/hal.h **** #define CW308_MPC5676R 35
+  58:.././hal/hal.h **** #define CW308_NEORV32  36
+  59:.././hal/hal.h **** #define CW305_IBEX  37
+  60:.././hal/hal.h **** 
+  61:.././hal/hal.h **** //HAL_TYPE Define Types
+  62:.././hal/hal.h **** #define HAL_avr      1
+  63:.././hal/hal.h **** #define HAL_xmega    2
+  64:.././hal/hal.h **** #define HAL_pic24f   3
+  65:.././hal/hal.h **** #define HAL_sam4l    4
+  66:.././hal/hal.h **** #define HAL_stm32f0  5
+  67:.././hal/hal.h **** #define HAL_stm32f1  6
+  68:.././hal/hal.h **** #define HAL_stm32f2  7
+  69:.././hal/hal.h **** #define HAL_stm32f3  8
+  70:.././hal/hal.h **** #define HAL_stm32f4  9
+  71:.././hal/hal.h **** #define HAL_cc2538   10
+  72:.././hal/hal.h **** #define HAL_k24f     11
+  73:.././hal/hal.h **** #define HAL_nrf52840 12
+  74:.././hal/hal.h **** #define HAL_stm32f0_nano 13
+  75:.././hal/hal.h **** #define HAL_aurix    14
+  76:.././hal/hal.h **** #define HAL_saml11   15
+  77:.././hal/hal.h **** #define HAL_efm32tg11b 16
+  78:.././hal/hal.h **** #define HAL_k82f     17
+  79:.././hal/hal.h **** #define HAL_lpc55s6x 18
+  80:.././hal/hal.h **** #define HAL_psoc62   19
+  81:.././hal/hal.h **** #define HAL_imxrt1062 20
+  82:.././hal/hal.h **** #define HAL_fe310    21
+  83:.././hal/hal.h **** #define HAL_efr32mg21a 22
+  84:.././hal/hal.h **** #define HAL_efm32gg11 23
+  85:.././hal/hal.h **** #define HAL_stm32l5 24
+  86:.././hal/hal.h **** #define HAL_stm32l4 25
+  87:.././hal/hal.h **** #define HAL_rx65n 26
+  88:.././hal/hal.h **** #define HAL_mpc5676r 27
+  89:.././hal/hal.h **** #define HAL_neorv32  28
+  90:.././hal/hal.h **** #define HAL_sam4s  29
+  91:.././hal/hal.h **** #define HAL_ibex  30
+  92:.././hal/hal.h **** 
+  93:.././hal/hal.h **** #if HAL_TYPE == HAL_avr
+  94:.././hal/hal.h ****     #include <avr/io.h>
+  95:.././hal/hal.h ****     #include <util/delay.h>
+  96:.././hal/hal.h ****     #include "avr/avr_hal.h"
+  97:.././hal/hal.h **** #elif HAL_TYPE == HAL_xmega
+  98:.././hal/hal.h ****     #include <avr/io.h>
+  99:.././hal/hal.h ****     #include <util/delay.h>
+ 100:.././hal/hal.h ****     #include "xmega/xmega_hal.h"
+ 101:.././hal/hal.h ****     #include "xmega/avr_compiler.h"
+ 102:.././hal/hal.h **** #elif HAL_TYPE == HAL_pic24f
+ 103:.././hal/hal.h ****     #include <xc.h>
+ 104:.././hal/hal.h ****     #include "pic24f/pic24f_hal.h"
+ 105:.././hal/hal.h ****     #include "pic24f/uart.h"
+ 106:.././hal/hal.h **** #elif HAL_TYPE == HAL_sam4l
+ 107:.././hal/hal.h ****     #include "sam4l/sam4l_hal.h"
+ 108:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f0
+ 109:.././hal/hal.h **** 	#include "stm32f0/stm32f0_hal.h"
+ 110:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f1
+ 111:.././hal/hal.h **** 	#include "stm32f1/stm32f1_hal.h"
+ 112:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f2
+ 113:.././hal/hal.h **** 	#include "stm32f2/stm32f2_hal.h"
+ 114:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f3
+ 115:.././hal/hal.h **** 	#include "stm32f3/stm32f3_hal.h"
+ 116:.././hal/hal.h **** 	#ifdef SECCAN
+ 117:.././hal/hal.h **** 		#include "stm32f3/stm32f3_hal_seccan.h"
+ 118:.././hal/hal.h **** 	#endif
+ 119:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f4
+ 120:.././hal/hal.h **** 	#include "stm32f4/stm32f4_hal.h"
+ 121:.././hal/hal.h **** #elif HAL_TYPE == HAL_cc2538
+ 122:.././hal/hal.h **** 	#include "cc2538/cc2538_hal.h"
+ 123:.././hal/hal.h **** #elif HAL_TYPE == HAL_k24f
+ 124:.././hal/hal.h ****     #include "k24f/k24f_hal.h"
+ 125:.././hal/hal.h **** #elif HAL_TYPE == HAL_k82f
+ 126:.././hal/hal.h **** #include "k82f/k82f_hal.h"
+ 127:.././hal/hal.h **** #elif HAL_TYPE == HAL_nrf52840
+ 128:.././hal/hal.h ****     #include "nrf52840/nrf52840_hal.h"   
+ 129:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f0_nano
+ 130:.././hal/hal.h ****     #include "stm32f0/stm32f0_hal.h" 
+ 131:.././hal/hal.h ****     void led_error(unsigned int status);
+ 132:.././hal/hal.h ****     void led_ok(unsigned int status);
+ 133:.././hal/hal.h **** #elif HAL_TYPE == HAL_aurix
+ 134:.././hal/hal.h ****     #include "aurix/aurix_hal.h"
+ 135:.././hal/hal.h **** #elif HAL_TYPE == HAL_saml11
+ 136:.././hal/hal.h ****      #include "saml11/saml11_hal.h"
+ 137:.././hal/hal.h **** #elif HAL_TYPE == HAL_efm32tg11b
+ 138:.././hal/hal.h ****      #include "efm32tg11b/efm32tg11b_hal.h"
+ 139:.././hal/hal.h **** #elif HAL_TYPE == HAL_lpc55s6x
+ 140:.././hal/hal.h ****      #include "lpc55s6x/lpc55s6x_hal.h"
+ 141:.././hal/hal.h **** #elif HAL_TYPE == HAL_psoc62
+ 142:.././hal/hal.h ****     #include "psoc62/psoc62_hal.h"
+ 143:.././hal/hal.h **** #elif HAL_TYPE == HAL_imxrt1062
+ 144:.././hal/hal.h ****     #include "imxrt1062/imxrt1062_hal.h"
+ 145:.././hal/hal.h **** #elif HAL_TYPE == HAL_fe310
+ 146:.././hal/hal.h ****     #include "fe310/fe310_hal.h"
+ 147:.././hal/hal.h **** #elif HAL_TYPE == HAL_efr32mg21a
+ 148:.././hal/hal.h ****     #include "efr32mg21a/efr32mg21a_hal.h"
+ 149:.././hal/hal.h **** #elif HAL_TYPE == HAL_efm32gg11
+ 150:.././hal/hal.h ****     #include "efm32gg11/efm32gg11_hal.h"
+ 151:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32l5
+ 152:.././hal/hal.h ****     #include "stm32l5/stm32l5_hal.h"
+ 153:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32l4
+ 154:.././hal/hal.h ****     #include "stm32l4/stm32l4_hal.h"
+ 155:.././hal/hal.h **** #elif HAL_TYPE == HAL_rx65n
+ 156:.././hal/hal.h ****     #include "rx65n/rx65n_hal.h"
+ 157:.././hal/hal.h **** #elif HAL_TYPE == HAL_mpc5676r
+ 158:.././hal/hal.h ****     #include "mpc5676r/MPC5676R_hal.h"
+ 159:.././hal/hal.h **** #elif HAL_TYPE == HAL_neorv32
+ 160:.././hal/hal.h ****     #include "neorv32/neorv32_hal.h"
+ 161:.././hal/hal.h **** #elif HAL_TYPE == HAL_sam4s
+ 162:.././hal/hal.h ****     #include "sam4s/sam4s_hal.h"
+ 163:.././hal/hal.h **** #elif HAL_TYPE == HAL_ibex
+ 164:.././hal/hal.h ****     #include "ibex/ibex_hal.h"
+ 165:.././hal/hal.h **** #else
+ 166:.././hal/hal.h ****     #error "Unsupported HAL Type"
+ 167:.././hal/hal.h **** #endif
+ 168:.././hal/hal.h **** 
+ 169:.././hal/hal.h **** #if PLATFORM == CW308_MEGARF
+ 170:.././hal/hal.h ****     #undef trigger_setup
+ 171:.././hal/hal.h ****     #undef trigger_high
+ 172:.././hal/hal.h ****     #undef trigger_low
+ 173:.././hal/hal.h ****     #define trigger_setup() DDRD |= 0x02
+ 174:.././hal/hal.h ****     #define trigger_high()  PORTD |= 0x02
+ 175:.././hal/hal.h ****     #define trigger_low()   PORTD &= ~(0x02)
+ 176:.././hal/hal.h ****     
+ 177:.././hal/hal.h ****     #define HW_AES128_Init();      AES_CTRL = 0x00;
+ 178:.././hal/hal.h **** 
+ 179:.././hal/hal.h ****     #define HW_AES128_LoadKey(key);  for (uint8_t i = 0; i < 16; i++){ \
+ 180:.././hal/hal.h ****                                      AES_KEY = *(key+i); \
+ 181:.././hal/hal.h ****                                   }
+ 182:.././hal/hal.h **** 
+ 183:.././hal/hal.h ****     #define HW_AES128_Enc(pt);  for (uint8_t i = 0; i < 16; i++){ \
+ 184:.././hal/hal.h ****                                     AES_STATE = *(pt+i); \
+ 185:.././hal/hal.h ****                                 } \
+ 186:.././hal/hal.h ****                                   \
+ 187:.././hal/hal.h ****                                 AES_CTRL |= 1<<AES_REQUEST; \
+ 188:.././hal/hal.h ****                                   \
+ 189:.././hal/hal.h ****                                 /*Wait for done  */ \
+ 190:.././hal/hal.h ****                                 while ((AES_STATUS & (1<<AES_DONE)) == 0){ \
+ 191:.././hal/hal.h ****                                     ; \
+ 192:.././hal/hal.h ****                                 } \
+ 193:.././hal/hal.h ****                                   \
+ 194:.././hal/hal.h ****                                 for (uint8_t i = 0; i < 16; i++){ \
+ 195:.././hal/hal.h ****                                     *(pt+i) = AES_STATE; \
+ 196:.././hal/hal.h ****                                 }
+ 197:.././hal/hal.h ****     
+ 198:.././hal/hal.h **** #endif
+ 199:.././hal/hal.h **** 
+ 200:.././hal/hal.h **** __attribute__((weak)) void led_ok(unsigned int status)
+ 201:.././hal/hal.h **** {
+ 296              		.loc 2 201 1 is_stmt 1 view -0
+ 297              		.cfi_startproc
+ 298              		@ args = 0, pretend = 0, frame = 0
+ 299              		@ frame_needed = 0, uses_anonymous_args = 0
+ 300              		@ link register save eliminated.
+ 202:.././hal/hal.h **** }
+ 301              		.loc 2 202 1 view .LVU60
+ 302 0000 7047     		bx	lr
+ 303              		.cfi_endproc
+ 304              	.LFE0:
+ 306              		.section	.text.led_error,"ax",%progbits
+ 307              		.align	1
+ 308              		.weak	led_error
+ 309              		.syntax unified
+ 310              		.thumb
+ 311              		.thumb_func
+ 312              		.fpu softvfp
+ 314              	led_error:
+ 315              	.LFB10:
+ 316              		.cfi_startproc
+ 317              		@ args = 0, pretend = 0, frame = 0
+ 318              		@ frame_needed = 0, uses_anonymous_args = 0
+ 319              		@ link register save eliminated.
+ 320 0000 7047     		bx	lr
+ 321              		.cfi_endproc
+ 322              	.LFE10:
+ 324              		.section	.rodata.str1.1,"aMS",%progbits,1
+ 325              	.LC0:
+ 326 0000 6CECC67F 		.ascii	"l\354\306\177(}\010=\353\207f\360s\2136\317\026N\331"
+ 326      287D083D 
+ 326      EB8766F0 
+ 326      738B36CF 
+ 326      164ED9
+ 327 0013 B2469510 		.ascii	"\262F\225\020\220\206\235\010(].\031;\000"
+ 327      90869D08 
+ 327      285D2E19 
+ 327      3B00
+ 328              		.section	.text.startup.main,"ax",%progbits
+ 329              		.align	1
+ 330              		.global	main
+ 331              		.syntax unified
+ 332              		.thumb
+ 333              		.thumb_func
+ 334              		.fpu softvfp
+ 336              	main:
+ 337              	.LFB8:
+  69:simpleserial-gost.c **** 
+  70:simpleserial-gost.c **** #if SS_VER == SS_VER_2_1
+  71:simpleserial-gost.c **** uint8_t gost(uint8_t cmd, uint8_t scmd, uint8_t len, uint8_t *buf)
+  72:simpleserial-gost.c **** {
+  73:simpleserial-gost.c ****     uint8_t req_len = 0;
+  74:simpleserial-gost.c ****     uint8_t err = 0;
+  75:simpleserial-gost.c ****     uint8_t mask_len = 0;
+  76:simpleserial-gost.c ****     if (scmd & 0x04) {
+  77:simpleserial-gost.c ****         // Mask has variable length. First byte encodes the length
+  78:simpleserial-gost.c ****         mask_len = buf[req_len];
+  79:simpleserial-gost.c ****         req_len += 1 + mask_len;
+  80:simpleserial-gost.c ****         if (req_len > len) {
+  81:simpleserial-gost.c ****             return SS_ERR_LEN;
+  82:simpleserial-gost.c ****         }
+  83:simpleserial-gost.c ****         err = get_mask(buf + req_len - mask_len, mask_len);
+  84:simpleserial-gost.c ****         if (err)
+  85:simpleserial-gost.c ****             return err;
+  86:simpleserial-gost.c ****     }
+  87:simpleserial-gost.c **** 
+  88:simpleserial-gost.c ****     if (scmd & 0x02) {
+  89:simpleserial-gost.c ****         req_len += 16;
+  90:simpleserial-gost.c ****         if (req_len > len) {
+  91:simpleserial-gost.c ****             return SS_ERR_LEN;
+  92:simpleserial-gost.c ****         }
+  93:simpleserial-gost.c ****         err = get_key(buf + req_len - 16, 16);
+  94:simpleserial-gost.c ****         if (err)
+  95:simpleserial-gost.c ****             return err;
+  96:simpleserial-gost.c ****     }
+  97:simpleserial-gost.c ****     if (scmd & 0x01) {
+  98:simpleserial-gost.c ****         req_len += 16;
+  99:simpleserial-gost.c ****         if (req_len > len) {
+ 100:simpleserial-gost.c ****             return SS_ERR_LEN;
+ 101:simpleserial-gost.c ****         }
+ 102:simpleserial-gost.c ****         err = get_pt(buf + req_len - 16, 16);
+ 103:simpleserial-gost.c ****         if (err)
+ 104:simpleserial-gost.c ****             return err;
+ 105:simpleserial-gost.c ****     }
+ 106:simpleserial-gost.c **** 
+ 107:simpleserial-gost.c ****     if (len != req_len) {
+ 108:simpleserial-gost.c ****         return SS_ERR_LEN;
+ 109:simpleserial-gost.c ****     }
+ 110:simpleserial-gost.c **** 
+ 111:simpleserial-gost.c ****     return 0x00;
+ 112:simpleserial-gost.c **** 
+ 113:simpleserial-gost.c **** }
+ 114:simpleserial-gost.c **** #endif
+ 115:simpleserial-gost.c **** 
+ 116:simpleserial-gost.c **** int main(void)
+ 117:simpleserial-gost.c **** {
+ 338              		.loc 1 117 1 view -0
+ 339              		.cfi_startproc
+ 340              		@ Volatile: function does not return.
+ 341              		@ args = 0, pretend = 0, frame = 32
+ 342              		@ frame_needed = 0, uses_anonymous_args = 0
+ 118:simpleserial-gost.c **** 	uint8_t tmp[KEY_LENGTH] = {DEFAULT_KEY};
+ 343              		.loc 1 118 2 view .LVU62
+ 117:simpleserial-gost.c **** 	uint8_t tmp[KEY_LENGTH] = {DEFAULT_KEY};
+ 344              		.loc 1 117 1 is_stmt 0 view .LVU63
+ 345 0000 00B5     		push	{lr}
+ 346              	.LCFI4:
+ 347              		.cfi_def_cfa_offset 4
+ 348              		.cfi_offset 14, -4
+ 349              		.loc 1 118 10 view .LVU64
+ 350 0002 1E4B     		ldr	r3, .L19
+ 117:simpleserial-gost.c **** 	uint8_t tmp[KEY_LENGTH] = {DEFAULT_KEY};
+ 351              		.loc 1 117 1 view .LVU65
+ 352 0004 89B0     		sub	sp, sp, #36
+ 353              	.LCFI5:
+ 354              		.cfi_def_cfa_offset 40
+ 355              		.loc 1 118 10 view .LVU66
+ 356 0006 6A46     		mov	r2, sp
+ 357 0008 03F12006 		add	r6, r3, #32
+ 358 000c 1546     		mov	r5, r2
+ 359              	.L16:
+ 360 000e 1868     		ldr	r0, [r3]	@ unaligned
+ 361 0010 5968     		ldr	r1, [r3, #4]	@ unaligned
+ 362 0012 1446     		mov	r4, r2
+ 363 0014 03C4     		stmia	r4!, {r0, r1}
+ 364 0016 0833     		adds	r3, r3, #8
+ 365 0018 B342     		cmp	r3, r6
+ 366 001a 2246     		mov	r2, r4
+ 367 001c F7D1     		bne	.L16
+ 119:simpleserial-gost.c **** 
+ 120:simpleserial-gost.c ****     platform_init();
+ 368              		.loc 1 120 5 is_stmt 1 view .LVU67
+ 369 001e FFF7FEFF 		bl	platform_init
+ 370              	.LVL26:
+ 121:simpleserial-gost.c ****     init_uart();
+ 371              		.loc 1 121 5 view .LVU68
+ 372 0022 FFF7FEFF 		bl	init_uart
+ 373              	.LVL27:
+ 122:simpleserial-gost.c ****     trigger_setup();
+ 374              		.loc 1 122 5 view .LVU69
+ 375 0026 FFF7FEFF 		bl	trigger_setup
+ 376              	.LVL28:
+ 123:simpleserial-gost.c **** 
+ 124:simpleserial-gost.c **** 	gost_indep_init();
+ 377              		.loc 1 124 2 view .LVU70
+ 378 002a FFF7FEFF 		bl	gost_indep_init
+ 379              	.LVL29:
+ 125:simpleserial-gost.c **** 	gost_indep_key(tmp);
+ 380              		.loc 1 125 2 view .LVU71
+ 381 002e 2846     		mov	r0, r5
+ 382 0030 FFF7FEFF 		bl	gost_indep_key
+ 383              	.LVL30:
+ 126:simpleserial-gost.c **** 
+ 127:simpleserial-gost.c ****     /* Uncomment this to get a HELLO message for debug */
+ 128:simpleserial-gost.c **** 
+ 129:simpleserial-gost.c ****     // putch('h');
+ 130:simpleserial-gost.c ****     // putch('e');
+ 131:simpleserial-gost.c ****     // putch('l');
+ 132:simpleserial-gost.c ****     // putch('l');
+ 133:simpleserial-gost.c ****     // putch('o');
+ 134:simpleserial-gost.c ****     // putch('\n');
+ 135:simpleserial-gost.c **** 
+ 136:simpleserial-gost.c **** 	simpleserial_init();
+ 384              		.loc 1 136 2 view .LVU72
+ 385 0034 FFF7FEFF 		bl	simpleserial_init
+ 386              	.LVL31:
+ 137:simpleserial-gost.c ****     #if SS_VER == SS_VER_2_1
+ 138:simpleserial-gost.c ****     simpleserial_addcmd(0x01, 16, gost);
+ 139:simpleserial-gost.c ****     #else
+ 140:simpleserial-gost.c ****     
+ 141:simpleserial-gost.c ****     simpleserial_addcmd('k', 16, get_key);
+ 387              		.loc 1 141 5 view .LVU73
+ 388 0038 114A     		ldr	r2, .L19+4
+ 389 003a 1021     		movs	r1, #16
+ 390 003c 6B20     		movs	r0, #107
+ 391 003e FFF7FEFF 		bl	simpleserial_addcmd
+ 392              	.LVL32:
+ 142:simpleserial-gost.c ****     simpleserial_addcmd('p', 16,  get_pt);
+ 393              		.loc 1 142 5 view .LVU74
+ 394 0042 104A     		ldr	r2, .L19+8
+ 395 0044 1021     		movs	r1, #16
+ 396 0046 7020     		movs	r0, #112
+ 397 0048 FFF7FEFF 		bl	simpleserial_addcmd
+ 398              	.LVL33:
+ 143:simpleserial-gost.c ****     simpleserial_addcmd('x',  0,   reset);
+ 399              		.loc 1 143 5 view .LVU75
+ 400 004c 0E4A     		ldr	r2, .L19+12
+ 401 004e 0021     		movs	r1, #0
+ 402 0050 7820     		movs	r0, #120
+ 403 0052 FFF7FEFF 		bl	simpleserial_addcmd
+ 404              	.LVL34:
+ 144:simpleserial-gost.c ****     simpleserial_addcmd_flags('m', 18, get_mask, CMD_FLAG_LEN);
+ 405              		.loc 1 144 5 view .LVU76
+ 406 0056 0D4A     		ldr	r2, .L19+16
+ 407 0058 0123     		movs	r3, #1
+ 408 005a 1221     		movs	r1, #18
+ 409 005c 6D20     		movs	r0, #109
+ 410 005e FFF7FEFF 		bl	simpleserial_addcmd_flags
+ 411              	.LVL35:
+ 145:simpleserial-gost.c ****     simpleserial_addcmd('s', 2, enc_multi_setnum);
+ 412              		.loc 1 145 5 view .LVU77
+ 413 0062 0B4A     		ldr	r2, .L19+20
+ 414 0064 0221     		movs	r1, #2
+ 415 0066 7320     		movs	r0, #115
+ 416 0068 FFF7FEFF 		bl	simpleserial_addcmd
+ 417              	.LVL36:
+ 146:simpleserial-gost.c ****     simpleserial_addcmd('f', 16, enc_multi_getpt);
+ 418              		.loc 1 146 5 view .LVU78
+ 419 006c 094A     		ldr	r2, .L19+24
+ 420 006e 1021     		movs	r1, #16
+ 421 0070 6620     		movs	r0, #102
+ 422 0072 FFF7FEFF 		bl	simpleserial_addcmd
+ 423              	.LVL37:
+ 424              	.L17:
+ 147:simpleserial-gost.c ****     #endif
+ 148:simpleserial-gost.c ****     while(1)
+ 425              		.loc 1 148 5 discriminator 1 view .LVU79
+ 149:simpleserial-gost.c ****         simpleserial_get();
+ 426              		.loc 1 149 9 discriminator 1 view .LVU80
+ 427 0076 FFF7FEFF 		bl	simpleserial_get
+ 428              	.LVL38:
+ 148:simpleserial-gost.c ****         simpleserial_get();
+ 429              		.loc 1 148 10 discriminator 1 view .LVU81
+ 430 007a FCE7     		b	.L17
+ 431              	.L20:
+ 432              		.align	2
+ 433              	.L19:
+ 434 007c 00000000 		.word	.LC0
+ 435 0080 00000000 		.word	get_key
+ 436 0084 00000000 		.word	get_pt
+ 437 0088 00000000 		.word	reset
+ 438 008c 00000000 		.word	get_mask
+ 439 0090 00000000 		.word	enc_multi_setnum
+ 440 0094 00000000 		.word	enc_multi_getpt
+ 441              		.cfi_endproc
+ 442              	.LFE8:
+ 444              		.data
+ 445              		.align	1
+ 446              		.set	.LANCHOR0,. + 0
+ 449              	num_encryption_rounds:
+ 450 0000 0A00     		.short	10
+ 451              		.text
+ 452              	.Letext0:
+ 453              		.file 3 "c:\\users\\vadim\\chipwh~1\\cw\\home\\portable\\armgcc\\arm-none-eabi\\include\\machine\\
+ 454              		.file 4 "c:\\users\\vadim\\chipwh~1\\cw\\home\\portable\\armgcc\\arm-none-eabi\\include\\sys\\_std
+ 455              		.file 5 ".././hal/stm32f3/stm32f3_hal.h"
+ 456              		.file 6 ".././crypto/gost-independant.h"
+ 457              		.file 7 ".././simpleserial/simpleserial.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 simpleserial-gost.c
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:16     .text.reset:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:24     .text.reset:00000000 reset
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:43     .text.enc_multi_setnum:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:50     .text.enc_multi_setnum:00000000 enc_multi_setnum
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:74     .text.enc_multi_setnum:0000000c $d
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:79     .text.get_mask:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:86     .text.get_mask:00000000 get_mask
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:111    .text.get_key:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:118    .text.get_key:00000000 get_key
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:143    .text.get_pt:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:150    .text.get_pt:00000000 get_pt
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:198    .text.enc_multi_getpt:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:205    .text.enc_multi_getpt:00000000 enc_multi_getpt
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:279    .text.enc_multi_getpt:00000038 $d
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:285    .text.led_ok:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:292    .text.led_ok:00000000 led_ok
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:307    .text.led_error:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:314    .text.led_error:00000000 led_error
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:329    .text.startup.main:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:336    .text.startup.main:00000000 main
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:434    .text.startup.main:0000007c $d
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:445    .data:00000000 $d
+C:\Users\Vadim\AppData\Local\Temp\ccC7zupN.s:449    .data:00000000 num_encryption_rounds
+
+UNDEFINED SYMBOLS
+gost_indep_mask
+gost_indep_key
+gost_indep_enc_pretrigger
+trigger_high
+gost_indep_enc
+trigger_low
+gost_indep_enc_posttrigger
+simpleserial_put
+platform_init
+init_uart
+trigger_setup
+gost_indep_init
+simpleserial_init
+simpleserial_addcmd
+simpleserial_addcmd_flags
+simpleserial_get

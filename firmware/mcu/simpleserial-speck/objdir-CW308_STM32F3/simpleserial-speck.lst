@@ -1,0 +1,870 @@
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 4
+   9              		.eabi_attribute 34, 1
+  10              		.eabi_attribute 18, 4
+  11              		.file	"simpleserial-speck.c"
+  12              		.text
+  13              	.Ltext0:
+  14              		.cfi_sections	.debug_frame
+  15              		.section	.text.set_key,"ax",%progbits
+  16              		.align	1
+  17              		.global	set_key
+  18              		.arch armv7e-m
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu softvfp
+  24              	set_key:
+  25              	.LVL0:
+  26              	.LFB3:
+  27              		.file 1 "simpleserial-speck.c"
+   1:simpleserial-speck.c **** #include "hal.h"
+   2:simpleserial-speck.c **** #include "simpleserial.h"
+   3:simpleserial-speck.c **** #include <stdint.h>
+   4:simpleserial-speck.c **** #include <stdlib.h>
+   5:simpleserial-speck.c **** #include <string.h> // Добавляем для memcpy
+   6:simpleserial-speck.c **** 
+   7:simpleserial-speck.c **** // --- Реализация SPECK 64/128 ---
+   8:simpleserial-speck.c **** 
+   9:simpleserial-speck.c **** #define ROR(x, r) ((x >> r) | (x << (32 - r)))
+  10:simpleserial-speck.c **** #define ROL(x, r) ((x << r) | (x >> (32 - r)))
+  11:simpleserial-speck.c **** #define R(x, y, k) (x = ROR(x, 8), x += y, x ^= k, y = ROL(y, 3), y ^= x)
+  12:simpleserial-speck.c **** 
+  13:simpleserial-speck.c **** void speck_encrypt(uint32_t pt[2], uint32_t ct[2], uint32_t key[4])
+  14:simpleserial-speck.c **** {
+  15:simpleserial-speck.c ****     uint32_t b = key[0];
+  16:simpleserial-speck.c ****     uint32_t a[3];
+  17:simpleserial-speck.c ****     a[0] = key[1];
+  18:simpleserial-speck.c ****     a[1] = key[2];
+  19:simpleserial-speck.c ****     a[2] = key[3];
+  20:simpleserial-speck.c **** 
+  21:simpleserial-speck.c ****     ct[0] = pt[0];
+  22:simpleserial-speck.c ****     ct[1] = pt[1];
+  23:simpleserial-speck.c **** 
+  24:simpleserial-speck.c ****     for (int i = 0; i < 27; i++) {
+  25:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+  26:simpleserial-speck.c ****         R(a[i % 3], b, i);
+  27:simpleserial-speck.c ****     }
+  28:simpleserial-speck.c **** }
+  29:simpleserial-speck.c **** 
+  30:simpleserial-speck.c **** // Добавляем volatile, чтобы компилятор не оптимизировал д�
+  31:simpleserial-speck.c **** volatile uint32_t stored_key[4] = {0};
+  32:simpleserial-speck.c **** 
+  33:simpleserial-speck.c **** // ИСПРАВЛЕННЫЙ обработчик записи ключа
+  34:simpleserial-speck.c **** uint8_t set_key(uint8_t* k, uint8_t len)
+  35:simpleserial-speck.c **** {
+  28              		.loc 1 35 1 view -0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  36:simpleserial-speck.c ****     // Безопасный способ: собираем байты вручную (Little Endian
+  37:simpleserial-speck.c ****     // Это предотвращает HardFault из-за невыровненного дост�
+  38:simpleserial-speck.c ****     stored_key[0] = (uint32_t)k[0] | ((uint32_t)k[1] << 8) | ((uint32_t)k[2] << 16) | ((uint32_t)k[
+  33              		.loc 1 38 5 view .LVU1
+  34              		.loc 1 38 19 is_stmt 0 view .LVU2
+  35 0000 054B     		ldr	r3, .L2
+  36              		.loc 1 38 85 view .LVU3
+  37 0002 0268     		ldr	r2, [r0]	@ unaligned
+  38              		.loc 1 38 19 view .LVU4
+  39 0004 1A60     		str	r2, [r3]
+  39:simpleserial-speck.c ****     stored_key[1] = (uint32_t)k[4] | ((uint32_t)k[5] << 8) | ((uint32_t)k[6] << 16) | ((uint32_t)k[
+  40              		.loc 1 39 5 is_stmt 1 view .LVU5
+  41              		.loc 1 39 85 is_stmt 0 view .LVU6
+  42 0006 4268     		ldr	r2, [r0, #4]	@ unaligned
+  43              		.loc 1 39 19 view .LVU7
+  44 0008 5A60     		str	r2, [r3, #4]
+  40:simpleserial-speck.c ****     stored_key[2] = (uint32_t)k[8] | ((uint32_t)k[9] << 8) | ((uint32_t)k[10] << 16) | ((uint32_t)k
+  45              		.loc 1 40 5 is_stmt 1 view .LVU8
+  46              		.loc 1 40 86 is_stmt 0 view .LVU9
+  47 000a 8268     		ldr	r2, [r0, #8]	@ unaligned
+  48              		.loc 1 40 19 view .LVU10
+  49 000c 9A60     		str	r2, [r3, #8]
+  41:simpleserial-speck.c ****     stored_key[3] = (uint32_t)k[12] | ((uint32_t)k[13] << 8) | ((uint32_t)k[14] << 16) | ((uint32_t
+  50              		.loc 1 41 5 is_stmt 1 view .LVU11
+  51              		.loc 1 41 88 is_stmt 0 view .LVU12
+  52 000e C268     		ldr	r2, [r0, #12]	@ unaligned
+  53              		.loc 1 41 19 view .LVU13
+  54 0010 DA60     		str	r2, [r3, #12]
+  42:simpleserial-speck.c ****     
+  43:simpleserial-speck.c ****     return 0x00;
+  55              		.loc 1 43 5 is_stmt 1 view .LVU14
+  44:simpleserial-speck.c **** }
+  56              		.loc 1 44 1 is_stmt 0 view .LVU15
+  57 0012 0020     		movs	r0, #0
+  58              	.LVL1:
+  59              		.loc 1 44 1 view .LVU16
+  60 0014 7047     		bx	lr
+  61              	.L3:
+  62 0016 00BF     		.align	2
+  63              	.L2:
+  64 0018 00000000 		.word	.LANCHOR0
+  65              		.cfi_endproc
+  66              	.LFE3:
+  68              		.section	.text.reset,"ax",%progbits
+  69              		.align	1
+  70              		.global	reset
+  71              		.syntax unified
+  72              		.thumb
+  73              		.thumb_func
+  74              		.fpu softvfp
+  76              	reset:
+  77              	.LVL2:
+  78              	.LFB5:
+  45:simpleserial-speck.c **** 
+  46:simpleserial-speck.c **** // ИСПРАВЛЕННЫЙ обработчик шифрования
+  47:simpleserial-speck.c **** uint8_t get_pt(uint8_t* pt, uint8_t len)
+  48:simpleserial-speck.c **** {
+  49:simpleserial-speck.c ****     uint32_t pt32[2];
+  50:simpleserial-speck.c ****     uint32_t ct32[2];
+  51:simpleserial-speck.c ****     
+  52:simpleserial-speck.c ****     // Безопасное чтение входных данных (избегаем cast uint32*
+  53:simpleserial-speck.c ****     pt32[0] = (uint32_t)pt[0] | ((uint32_t)pt[1] << 8) | ((uint32_t)pt[2] << 16) | ((uint32_t)pt[3]
+  54:simpleserial-speck.c ****     pt32[1] = (uint32_t)pt[4] | ((uint32_t)pt[5] << 8) | ((uint32_t)pt[6] << 16) | ((uint32_t)pt[7]
+  55:simpleserial-speck.c **** 
+  56:simpleserial-speck.c ****     // Копируем ключ в локальный массив (убираем volatile для
+  57:simpleserial-speck.c ****     uint32_t key_local[4];
+  58:simpleserial-speck.c ****     key_local[0] = stored_key[0];
+  59:simpleserial-speck.c ****     key_local[1] = stored_key[1];
+  60:simpleserial-speck.c ****     key_local[2] = stored_key[2];
+  61:simpleserial-speck.c ****     key_local[3] = stored_key[3];
+  62:simpleserial-speck.c **** 
+  63:simpleserial-speck.c ****     // --- ТРИГГЕР ВВЕРХ ---
+  64:simpleserial-speck.c ****     trigger_high();
+  65:simpleserial-speck.c ****     
+  66:simpleserial-speck.c ****     // Шифруем
+  67:simpleserial-speck.c ****     speck_encrypt(pt32, ct32, key_local);
+  68:simpleserial-speck.c ****     
+  69:simpleserial-speck.c ****     // --- ТРИГГЕР ВНИЗ ---
+  70:simpleserial-speck.c ****     trigger_low();
+  71:simpleserial-speck.c **** 
+  72:simpleserial-speck.c ****     // Записываем результат обратно в буфер (Little Endian)
+  73:simpleserial-speck.c ****     // 1-е слово
+  74:simpleserial-speck.c ****     pt[0] = ct32[0] & 0xFF;
+  75:simpleserial-speck.c ****     pt[1] = (ct32[0] >> 8) & 0xFF;
+  76:simpleserial-speck.c ****     pt[2] = (ct32[0] >> 16) & 0xFF;
+  77:simpleserial-speck.c ****     pt[3] = (ct32[0] >> 24) & 0xFF;
+  78:simpleserial-speck.c ****     // 2-е слово
+  79:simpleserial-speck.c ****     pt[4] = ct32[1] & 0xFF;
+  80:simpleserial-speck.c ****     pt[5] = (ct32[1] >> 8) & 0xFF;
+  81:simpleserial-speck.c ****     pt[6] = (ct32[1] >> 16) & 0xFF;
+  82:simpleserial-speck.c ****     pt[7] = (ct32[1] >> 24) & 0xFF;
+  83:simpleserial-speck.c **** 
+  84:simpleserial-speck.c ****     simpleserial_put('r', 16, pt);
+  85:simpleserial-speck.c ****     return 0x00;
+  86:simpleserial-speck.c **** }
+  87:simpleserial-speck.c **** 
+  88:simpleserial-speck.c **** uint8_t reset(uint8_t* x, uint8_t len) { return 0x00; }
+  79              		.loc 1 88 40 is_stmt 1 view -0
+  80              		.cfi_startproc
+  81              		@ args = 0, pretend = 0, frame = 0
+  82              		@ frame_needed = 0, uses_anonymous_args = 0
+  83              		@ link register save eliminated.
+  84              		.loc 1 88 42 view .LVU18
+  85              		.loc 1 88 55 is_stmt 0 view .LVU19
+  86 0000 0020     		movs	r0, #0
+  87              	.LVL3:
+  88              		.loc 1 88 55 view .LVU20
+  89 0002 7047     		bx	lr
+  90              		.cfi_endproc
+  91              	.LFE5:
+  93              		.section	.text.led_ok,"ax",%progbits
+  94              		.align	1
+  95              		.weak	led_ok
+  96              		.syntax unified
+  97              		.thumb
+  98              		.thumb_func
+  99              		.fpu softvfp
+ 101              	led_ok:
+ 102              	.LVL4:
+ 103              	.LFB0:
+ 104              		.file 2 ".././hal/hal.h"
+   1:.././hal/hal.h **** /*
+   2:.././hal/hal.h ****     This file is part of the ChipWhisperer Example Targets
+   3:.././hal/hal.h ****     Copyright (C) 2012-2015 NewAE Technology Inc.
+   4:.././hal/hal.h **** 
+   5:.././hal/hal.h ****     This program is free software: you can redistribute it and/or modify
+   6:.././hal/hal.h ****     it under the terms of the GNU General Public License as published by
+   7:.././hal/hal.h ****     the Free Software Foundation, either version 3 of the License, or
+   8:.././hal/hal.h ****     (at your option) any later version.
+   9:.././hal/hal.h **** 
+  10:.././hal/hal.h ****     This program is distributed in the hope that it will be useful,
+  11:.././hal/hal.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  12:.././hal/hal.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  13:.././hal/hal.h ****     GNU General Public License for more details.
+  14:.././hal/hal.h **** 
+  15:.././hal/hal.h ****     You should have received a copy of the GNU General Public License
+  16:.././hal/hal.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  17:.././hal/hal.h **** */
+  18:.././hal/hal.h **** 
+  19:.././hal/hal.h **** #ifndef HAL_H_
+  20:.././hal/hal.h **** #define HAL_H_
+  21:.././hal/hal.h **** 
+  22:.././hal/hal.h **** #include <stdint.h>
+  23:.././hal/hal.h **** 
+  24:.././hal/hal.h **** void platform_init(void);
+  25:.././hal/hal.h **** 
+  26:.././hal/hal.h **** //PLATFORM Define Types
+  27:.././hal/hal.h **** #define CW301_AVR      1
+  28:.././hal/hal.h **** #define CW301_XMEGA    2
+  29:.././hal/hal.h **** #define CW303          3
+  30:.././hal/hal.h **** #define CW304          4
+  31:.././hal/hal.h **** #define CW308_MEGARF   8
+  32:.././hal/hal.h **** #define CW308_PIC24FJ  10
+  33:.././hal/hal.h **** #define CW308_SAM4L    11
+  34:.././hal/hal.h **** #define CW308_SI4010   12
+  35:.././hal/hal.h **** #define CW308_MPC5748G 13
+  36:.././hal/hal.h **** #define CW308_STM32F0  14
+  37:.././hal/hal.h **** #define CW308_STM32F1  15
+  38:.././hal/hal.h **** #define CW308_STM32F2  16
+  39:.././hal/hal.h **** #define CW308_STM32F3  17
+  40:.././hal/hal.h **** #define CW308_STM32F4  18
+  41:.././hal/hal.h **** #define CW308_CC2538   19
+  42:.././hal/hal.h **** #define CW308_K24F     20
+  43:.././hal/hal.h **** #define CW308_NRF52840 21
+  44:.././hal/hal.h **** #define CW308_AURIX    22
+  45:.././hal/hal.h **** #define CW308_SAML11   23
+  46:.././hal/hal.h **** #define CW308_EFM32TG11B 24
+  47:.././hal/hal.h **** #define CW308_K82F     25
+  48:.././hal/hal.h **** #define CW308_LPC55S6X 26
+  49:.././hal/hal.h **** #define CW308_PSOC62   27
+  50:.././hal/hal.h **** #define CW308_IMXRT1062 28
+  51:.././hal/hal.h **** #define CW308_FE310    29
+  52:.././hal/hal.h **** #define CW308_EFR32MG21A  30
+  53:.././hal/hal.h **** #define CW308_EFM32GG11  31
+  54:.././hal/hal.h **** #define CW308_STM32L5  32
+  55:.././hal/hal.h **** #define CW308_STM32L4  33
+  56:.././hal/hal.h **** #define CW308_RX65N  34
+  57:.././hal/hal.h **** #define CW308_MPC5676R 35
+  58:.././hal/hal.h **** #define CW308_NEORV32  36
+  59:.././hal/hal.h **** #define CW305_IBEX  37
+  60:.././hal/hal.h **** 
+  61:.././hal/hal.h **** //HAL_TYPE Define Types
+  62:.././hal/hal.h **** #define HAL_avr      1
+  63:.././hal/hal.h **** #define HAL_xmega    2
+  64:.././hal/hal.h **** #define HAL_pic24f   3
+  65:.././hal/hal.h **** #define HAL_sam4l    4
+  66:.././hal/hal.h **** #define HAL_stm32f0  5
+  67:.././hal/hal.h **** #define HAL_stm32f1  6
+  68:.././hal/hal.h **** #define HAL_stm32f2  7
+  69:.././hal/hal.h **** #define HAL_stm32f3  8
+  70:.././hal/hal.h **** #define HAL_stm32f4  9
+  71:.././hal/hal.h **** #define HAL_cc2538   10
+  72:.././hal/hal.h **** #define HAL_k24f     11
+  73:.././hal/hal.h **** #define HAL_nrf52840 12
+  74:.././hal/hal.h **** #define HAL_stm32f0_nano 13
+  75:.././hal/hal.h **** #define HAL_aurix    14
+  76:.././hal/hal.h **** #define HAL_saml11   15
+  77:.././hal/hal.h **** #define HAL_efm32tg11b 16
+  78:.././hal/hal.h **** #define HAL_k82f     17
+  79:.././hal/hal.h **** #define HAL_lpc55s6x 18
+  80:.././hal/hal.h **** #define HAL_psoc62   19
+  81:.././hal/hal.h **** #define HAL_imxrt1062 20
+  82:.././hal/hal.h **** #define HAL_fe310    21
+  83:.././hal/hal.h **** #define HAL_efr32mg21a 22
+  84:.././hal/hal.h **** #define HAL_efm32gg11 23
+  85:.././hal/hal.h **** #define HAL_stm32l5 24
+  86:.././hal/hal.h **** #define HAL_stm32l4 25
+  87:.././hal/hal.h **** #define HAL_rx65n 26
+  88:.././hal/hal.h **** #define HAL_mpc5676r 27
+  89:.././hal/hal.h **** #define HAL_neorv32  28
+  90:.././hal/hal.h **** #define HAL_sam4s  29
+  91:.././hal/hal.h **** #define HAL_ibex  30
+  92:.././hal/hal.h **** 
+  93:.././hal/hal.h **** #if HAL_TYPE == HAL_avr
+  94:.././hal/hal.h ****     #include <avr/io.h>
+  95:.././hal/hal.h ****     #include <util/delay.h>
+  96:.././hal/hal.h ****     #include "avr/avr_hal.h"
+  97:.././hal/hal.h **** #elif HAL_TYPE == HAL_xmega
+  98:.././hal/hal.h ****     #include <avr/io.h>
+  99:.././hal/hal.h ****     #include <util/delay.h>
+ 100:.././hal/hal.h ****     #include "xmega/xmega_hal.h"
+ 101:.././hal/hal.h ****     #include "xmega/avr_compiler.h"
+ 102:.././hal/hal.h **** #elif HAL_TYPE == HAL_pic24f
+ 103:.././hal/hal.h ****     #include <xc.h>
+ 104:.././hal/hal.h ****     #include "pic24f/pic24f_hal.h"
+ 105:.././hal/hal.h ****     #include "pic24f/uart.h"
+ 106:.././hal/hal.h **** #elif HAL_TYPE == HAL_sam4l
+ 107:.././hal/hal.h ****     #include "sam4l/sam4l_hal.h"
+ 108:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f0
+ 109:.././hal/hal.h **** 	#include "stm32f0/stm32f0_hal.h"
+ 110:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f1
+ 111:.././hal/hal.h **** 	#include "stm32f1/stm32f1_hal.h"
+ 112:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f2
+ 113:.././hal/hal.h **** 	#include "stm32f2/stm32f2_hal.h"
+ 114:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f3
+ 115:.././hal/hal.h **** 	#include "stm32f3/stm32f3_hal.h"
+ 116:.././hal/hal.h **** 	#ifdef SECCAN
+ 117:.././hal/hal.h **** 		#include "stm32f3/stm32f3_hal_seccan.h"
+ 118:.././hal/hal.h **** 	#endif
+ 119:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f4
+ 120:.././hal/hal.h **** 	#include "stm32f4/stm32f4_hal.h"
+ 121:.././hal/hal.h **** #elif HAL_TYPE == HAL_cc2538
+ 122:.././hal/hal.h **** 	#include "cc2538/cc2538_hal.h"
+ 123:.././hal/hal.h **** #elif HAL_TYPE == HAL_k24f
+ 124:.././hal/hal.h ****     #include "k24f/k24f_hal.h"
+ 125:.././hal/hal.h **** #elif HAL_TYPE == HAL_k82f
+ 126:.././hal/hal.h **** #include "k82f/k82f_hal.h"
+ 127:.././hal/hal.h **** #elif HAL_TYPE == HAL_nrf52840
+ 128:.././hal/hal.h ****     #include "nrf52840/nrf52840_hal.h"   
+ 129:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f0_nano
+ 130:.././hal/hal.h ****     #include "stm32f0/stm32f0_hal.h" 
+ 131:.././hal/hal.h ****     void led_error(unsigned int status);
+ 132:.././hal/hal.h ****     void led_ok(unsigned int status);
+ 133:.././hal/hal.h **** #elif HAL_TYPE == HAL_aurix
+ 134:.././hal/hal.h ****     #include "aurix/aurix_hal.h"
+ 135:.././hal/hal.h **** #elif HAL_TYPE == HAL_saml11
+ 136:.././hal/hal.h ****      #include "saml11/saml11_hal.h"
+ 137:.././hal/hal.h **** #elif HAL_TYPE == HAL_efm32tg11b
+ 138:.././hal/hal.h ****      #include "efm32tg11b/efm32tg11b_hal.h"
+ 139:.././hal/hal.h **** #elif HAL_TYPE == HAL_lpc55s6x
+ 140:.././hal/hal.h ****      #include "lpc55s6x/lpc55s6x_hal.h"
+ 141:.././hal/hal.h **** #elif HAL_TYPE == HAL_psoc62
+ 142:.././hal/hal.h ****     #include "psoc62/psoc62_hal.h"
+ 143:.././hal/hal.h **** #elif HAL_TYPE == HAL_imxrt1062
+ 144:.././hal/hal.h ****     #include "imxrt1062/imxrt1062_hal.h"
+ 145:.././hal/hal.h **** #elif HAL_TYPE == HAL_fe310
+ 146:.././hal/hal.h ****     #include "fe310/fe310_hal.h"
+ 147:.././hal/hal.h **** #elif HAL_TYPE == HAL_efr32mg21a
+ 148:.././hal/hal.h ****     #include "efr32mg21a/efr32mg21a_hal.h"
+ 149:.././hal/hal.h **** #elif HAL_TYPE == HAL_efm32gg11
+ 150:.././hal/hal.h ****     #include "efm32gg11/efm32gg11_hal.h"
+ 151:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32l5
+ 152:.././hal/hal.h ****     #include "stm32l5/stm32l5_hal.h"
+ 153:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32l4
+ 154:.././hal/hal.h ****     #include "stm32l4/stm32l4_hal.h"
+ 155:.././hal/hal.h **** #elif HAL_TYPE == HAL_rx65n
+ 156:.././hal/hal.h ****     #include "rx65n/rx65n_hal.h"
+ 157:.././hal/hal.h **** #elif HAL_TYPE == HAL_mpc5676r
+ 158:.././hal/hal.h ****     #include "mpc5676r/MPC5676R_hal.h"
+ 159:.././hal/hal.h **** #elif HAL_TYPE == HAL_neorv32
+ 160:.././hal/hal.h ****     #include "neorv32/neorv32_hal.h"
+ 161:.././hal/hal.h **** #elif HAL_TYPE == HAL_sam4s
+ 162:.././hal/hal.h ****     #include "sam4s/sam4s_hal.h"
+ 163:.././hal/hal.h **** #elif HAL_TYPE == HAL_ibex
+ 164:.././hal/hal.h ****     #include "ibex/ibex_hal.h"
+ 165:.././hal/hal.h **** #else
+ 166:.././hal/hal.h ****     #error "Unsupported HAL Type"
+ 167:.././hal/hal.h **** #endif
+ 168:.././hal/hal.h **** 
+ 169:.././hal/hal.h **** #if PLATFORM == CW308_MEGARF
+ 170:.././hal/hal.h ****     #undef trigger_setup
+ 171:.././hal/hal.h ****     #undef trigger_high
+ 172:.././hal/hal.h ****     #undef trigger_low
+ 173:.././hal/hal.h ****     #define trigger_setup() DDRD |= 0x02
+ 174:.././hal/hal.h ****     #define trigger_high()  PORTD |= 0x02
+ 175:.././hal/hal.h ****     #define trigger_low()   PORTD &= ~(0x02)
+ 176:.././hal/hal.h ****     
+ 177:.././hal/hal.h ****     #define HW_AES128_Init();      AES_CTRL = 0x00;
+ 178:.././hal/hal.h **** 
+ 179:.././hal/hal.h ****     #define HW_AES128_LoadKey(key);  for (uint8_t i = 0; i < 16; i++){ \
+ 180:.././hal/hal.h ****                                      AES_KEY = *(key+i); \
+ 181:.././hal/hal.h ****                                   }
+ 182:.././hal/hal.h **** 
+ 183:.././hal/hal.h ****     #define HW_AES128_Enc(pt);  for (uint8_t i = 0; i < 16; i++){ \
+ 184:.././hal/hal.h ****                                     AES_STATE = *(pt+i); \
+ 185:.././hal/hal.h ****                                 } \
+ 186:.././hal/hal.h ****                                   \
+ 187:.././hal/hal.h ****                                 AES_CTRL |= 1<<AES_REQUEST; \
+ 188:.././hal/hal.h ****                                   \
+ 189:.././hal/hal.h ****                                 /*Wait for done  */ \
+ 190:.././hal/hal.h ****                                 while ((AES_STATUS & (1<<AES_DONE)) == 0){ \
+ 191:.././hal/hal.h ****                                     ; \
+ 192:.././hal/hal.h ****                                 } \
+ 193:.././hal/hal.h ****                                   \
+ 194:.././hal/hal.h ****                                 for (uint8_t i = 0; i < 16; i++){ \
+ 195:.././hal/hal.h ****                                     *(pt+i) = AES_STATE; \
+ 196:.././hal/hal.h ****                                 }
+ 197:.././hal/hal.h ****     
+ 198:.././hal/hal.h **** #endif
+ 199:.././hal/hal.h **** 
+ 200:.././hal/hal.h **** __attribute__((weak)) void led_ok(unsigned int status)
+ 201:.././hal/hal.h **** {
+ 105              		.loc 2 201 1 is_stmt 1 view -0
+ 106              		.cfi_startproc
+ 107              		@ args = 0, pretend = 0, frame = 0
+ 108              		@ frame_needed = 0, uses_anonymous_args = 0
+ 109              		@ link register save eliminated.
+ 202:.././hal/hal.h **** }
+ 110              		.loc 2 202 1 view .LVU22
+ 111 0000 7047     		bx	lr
+ 112              		.cfi_endproc
+ 113              	.LFE0:
+ 115              		.section	.text.led_error,"ax",%progbits
+ 116              		.align	1
+ 117              		.weak	led_error
+ 118              		.syntax unified
+ 119              		.thumb
+ 120              		.thumb_func
+ 121              		.fpu softvfp
+ 123              	led_error:
+ 124              	.LFB8:
+ 125              		.cfi_startproc
+ 126              		@ args = 0, pretend = 0, frame = 0
+ 127              		@ frame_needed = 0, uses_anonymous_args = 0
+ 128              		@ link register save eliminated.
+ 129 0000 7047     		bx	lr
+ 130              		.cfi_endproc
+ 131              	.LFE8:
+ 133              		.section	.text.speck_encrypt,"ax",%progbits
+ 134              		.align	1
+ 135              		.global	speck_encrypt
+ 136              		.syntax unified
+ 137              		.thumb
+ 138              		.thumb_func
+ 139              		.fpu softvfp
+ 141              	speck_encrypt:
+ 142              	.LVL5:
+ 143              	.LFB2:
+  14:simpleserial-speck.c ****     uint32_t b = key[0];
+ 144              		.loc 1 14 1 view -0
+ 145              		.cfi_startproc
+ 146              		@ args = 0, pretend = 0, frame = 16
+ 147              		@ frame_needed = 0, uses_anonymous_args = 0
+  15:simpleserial-speck.c ****     uint32_t a[3];
+ 148              		.loc 1 15 5 view .LVU24
+  14:simpleserial-speck.c ****     uint32_t b = key[0];
+ 149              		.loc 1 14 1 is_stmt 0 view .LVU25
+ 150 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 151              	.LCFI0:
+ 152              		.cfi_def_cfa_offset 20
+ 153              		.cfi_offset 4, -20
+ 154              		.cfi_offset 5, -16
+ 155              		.cfi_offset 6, -12
+ 156              		.cfi_offset 7, -8
+ 157              		.cfi_offset 14, -4
+  17:simpleserial-speck.c ****     a[1] = key[2];
+ 158              		.loc 1 17 10 view .LVU26
+ 159 0002 D2E90063 		ldrd	r6, r3, [r2]
+  14:simpleserial-speck.c ****     uint32_t b = key[0];
+ 160              		.loc 1 14 1 view .LVU27
+ 161 0006 85B0     		sub	sp, sp, #20
+ 162              	.LCFI1:
+ 163              		.cfi_def_cfa_offset 40
+  21:simpleserial-speck.c ****     ct[1] = pt[1];
+ 164              		.loc 1 21 15 view .LVU28
+ 165 0008 0568     		ldr	r5, [r0]
+  17:simpleserial-speck.c ****     a[1] = key[2];
+ 166              		.loc 1 17 10 view .LVU29
+ 167 000a 0193     		str	r3, [sp, #4]
+  18:simpleserial-speck.c ****     a[2] = key[3];
+ 168              		.loc 1 18 5 is_stmt 1 view .LVU30
+  18:simpleserial-speck.c ****     a[2] = key[3];
+ 169              		.loc 1 18 10 is_stmt 0 view .LVU31
+ 170 000c 9368     		ldr	r3, [r2, #8]
+ 171 000e 0293     		str	r3, [sp, #8]
+  19:simpleserial-speck.c **** 
+ 172              		.loc 1 19 5 is_stmt 1 view .LVU32
+  19:simpleserial-speck.c **** 
+ 173              		.loc 1 19 10 is_stmt 0 view .LVU33
+ 174 0010 D368     		ldr	r3, [r2, #12]
+  21:simpleserial-speck.c ****     ct[1] = pt[1];
+ 175              		.loc 1 21 11 view .LVU34
+ 176 0012 0D60     		str	r5, [r1]
+  22:simpleserial-speck.c **** 
+ 177              		.loc 1 22 11 view .LVU35
+ 178 0014 4268     		ldr	r2, [r0, #4]
+ 179              	.LVL6:
+  19:simpleserial-speck.c **** 
+ 180              		.loc 1 19 10 view .LVU36
+ 181 0016 0393     		str	r3, [sp, #12]
+  21:simpleserial-speck.c ****     ct[1] = pt[1];
+ 182              		.loc 1 21 5 is_stmt 1 view .LVU37
+  22:simpleserial-speck.c **** 
+ 183              		.loc 1 22 5 view .LVU38
+  24:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+ 184              		.loc 1 24 5 view .LVU39
+ 185              	.LBB2:
+  24:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+ 186              		.loc 1 24 10 view .LVU40
+ 187              	.LVL7:
+  24:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+ 188              		.loc 1 24 21 view .LVU41
+  24:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+ 189              		.loc 1 24 14 is_stmt 0 view .LVU42
+ 190 0018 0020     		movs	r0, #0
+ 191              	.LVL8:
+  26:simpleserial-speck.c ****     }
+ 192              		.loc 1 26 9 view .LVU43
+ 193 001a 0327     		movs	r7, #3
+ 194              	.LVL9:
+ 195              	.L8:
+  25:simpleserial-speck.c ****         R(a[i % 3], b, i);
+ 196              		.loc 1 25 9 is_stmt 1 discriminator 3 view .LVU44
+  26:simpleserial-speck.c ****     }
+ 197              		.loc 1 26 9 is_stmt 0 discriminator 3 view .LVU45
+ 198 001c B0FBF7F3 		udiv	r3, r0, r7
+ 199 0020 03EB4303 		add	r3, r3, r3, lsl #1
+ 200 0024 C31A     		subs	r3, r0, r3
+ 201 0026 04AC     		add	r4, sp, #16
+ 202 0028 04EB8303 		add	r3, r4, r3, lsl #2
+  25:simpleserial-speck.c ****         R(a[i % 3], b, i);
+ 203              		.loc 1 25 9 discriminator 3 view .LVU46
+ 204 002c 05EB3222 		add	r2, r5, r2, ror #8
+  26:simpleserial-speck.c ****     }
+ 205              		.loc 1 26 9 discriminator 3 view .LVU47
+ 206 0030 53F80C4C 		ldr	r4, [r3, #-12]
+ 207 0034 06EB3424 		add	r4, r6, r4, ror #8
+ 208 0038 4440     		eors	r4, r4, r0
+  24:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+ 209              		.loc 1 24 30 discriminator 3 view .LVU48
+ 210 003a 0130     		adds	r0, r0, #1
+ 211              	.LVL10:
+  25:simpleserial-speck.c ****         R(a[i % 3], b, i);
+ 212              		.loc 1 25 9 discriminator 3 view .LVU49
+ 213 003c 7240     		eors	r2, r2, r6
+  24:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+ 214              		.loc 1 24 5 discriminator 3 view .LVU50
+ 215 003e 1B28     		cmp	r0, #27
+  25:simpleserial-speck.c ****         R(a[i % 3], b, i);
+ 216              		.loc 1 25 9 discriminator 3 view .LVU51
+ 217 0040 82EA7575 		eor	r5, r2, r5, ror #29
+  26:simpleserial-speck.c ****     }
+ 218              		.loc 1 26 9 is_stmt 1 discriminator 3 view .LVU52
+ 219              	.LVL11:
+  26:simpleserial-speck.c ****     }
+ 220              		.loc 1 26 9 is_stmt 0 discriminator 3 view .LVU53
+ 221 0044 43F80C4C 		str	r4, [r3, #-12]
+ 222 0048 84EA7676 		eor	r6, r4, r6, ror #29
+ 223              	.LVL12:
+  24:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+ 224              		.loc 1 24 29 is_stmt 1 discriminator 3 view .LVU54
+  24:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+ 225              		.loc 1 24 21 discriminator 3 view .LVU55
+  24:simpleserial-speck.c ****         R(ct[1], ct[0], b);
+ 226              		.loc 1 24 5 is_stmt 0 discriminator 3 view .LVU56
+ 227 004c E6D1     		bne	.L8
+ 228 004e C1E90052 		strd	r5, r2, [r1]
+ 229              	.LBE2:
+  28:simpleserial-speck.c **** 
+ 230              		.loc 1 28 1 view .LVU57
+ 231 0052 05B0     		add	sp, sp, #20
+ 232              	.LCFI2:
+ 233              		.cfi_def_cfa_offset 20
+ 234              		@ sp needed
+ 235 0054 F0BD     		pop	{r4, r5, r6, r7, pc}
+  28:simpleserial-speck.c **** 
+ 236              		.loc 1 28 1 view .LVU58
+ 237              		.cfi_endproc
+ 238              	.LFE2:
+ 240              		.section	.text.get_pt,"ax",%progbits
+ 241              		.align	1
+ 242              		.global	get_pt
+ 243              		.syntax unified
+ 244              		.thumb
+ 245              		.thumb_func
+ 246              		.fpu softvfp
+ 248              	get_pt:
+ 249              	.LVL13:
+ 250              	.LFB4:
+  48:simpleserial-speck.c ****     uint32_t pt32[2];
+ 251              		.loc 1 48 1 is_stmt 1 view -0
+ 252              		.cfi_startproc
+ 253              		@ args = 0, pretend = 0, frame = 32
+ 254              		@ frame_needed = 0, uses_anonymous_args = 0
+  49:simpleserial-speck.c ****     uint32_t ct32[2];
+ 255              		.loc 1 49 5 view .LVU60
+  50:simpleserial-speck.c ****     
+ 256              		.loc 1 50 5 view .LVU61
+  53:simpleserial-speck.c ****     pt32[1] = (uint32_t)pt[4] | ((uint32_t)pt[5] << 8) | ((uint32_t)pt[6] << 16) | ((uint32_t)pt[7]
+ 257              		.loc 1 53 5 view .LVU62
+  48:simpleserial-speck.c ****     uint32_t pt32[2];
+ 258              		.loc 1 48 1 is_stmt 0 view .LVU63
+ 259 0000 10B5     		push	{r4, lr}
+ 260              	.LCFI3:
+ 261              		.cfi_def_cfa_offset 8
+ 262              		.cfi_offset 4, -8
+ 263              		.cfi_offset 14, -4
+ 264 0002 88B0     		sub	sp, sp, #32
+ 265              	.LCFI4:
+ 266              		.cfi_def_cfa_offset 40
+  53:simpleserial-speck.c ****     pt32[1] = (uint32_t)pt[4] | ((uint32_t)pt[5] << 8) | ((uint32_t)pt[6] << 16) | ((uint32_t)pt[7]
+ 267              		.loc 1 53 82 view .LVU64
+ 268 0004 0368     		ldr	r3, [r0]	@ unaligned
+  53:simpleserial-speck.c ****     pt32[1] = (uint32_t)pt[4] | ((uint32_t)pt[5] << 8) | ((uint32_t)pt[6] << 16) | ((uint32_t)pt[7]
+ 269              		.loc 1 53 13 view .LVU65
+ 270 0006 0093     		str	r3, [sp]
+  54:simpleserial-speck.c **** 
+ 271              		.loc 1 54 5 is_stmt 1 view .LVU66
+  54:simpleserial-speck.c **** 
+ 272              		.loc 1 54 82 is_stmt 0 view .LVU67
+ 273 0008 4368     		ldr	r3, [r0, #4]	@ unaligned
+  54:simpleserial-speck.c **** 
+ 274              		.loc 1 54 13 view .LVU68
+ 275 000a 0193     		str	r3, [sp, #4]
+  57:simpleserial-speck.c ****     key_local[0] = stored_key[0];
+ 276              		.loc 1 57 5 is_stmt 1 view .LVU69
+  58:simpleserial-speck.c ****     key_local[1] = stored_key[1];
+ 277              		.loc 1 58 5 view .LVU70
+  58:simpleserial-speck.c ****     key_local[1] = stored_key[1];
+ 278              		.loc 1 58 30 is_stmt 0 view .LVU71
+ 279 000c 154B     		ldr	r3, .L11
+ 280 000e 1A68     		ldr	r2, [r3]
+  58:simpleserial-speck.c ****     key_local[1] = stored_key[1];
+ 281              		.loc 1 58 18 view .LVU72
+ 282 0010 0492     		str	r2, [sp, #16]
+  59:simpleserial-speck.c ****     key_local[2] = stored_key[2];
+ 283              		.loc 1 59 5 is_stmt 1 view .LVU73
+  59:simpleserial-speck.c ****     key_local[2] = stored_key[2];
+ 284              		.loc 1 59 30 is_stmt 0 view .LVU74
+ 285 0012 5A68     		ldr	r2, [r3, #4]
+  59:simpleserial-speck.c ****     key_local[2] = stored_key[2];
+ 286              		.loc 1 59 18 view .LVU75
+ 287 0014 0592     		str	r2, [sp, #20]
+  60:simpleserial-speck.c ****     key_local[3] = stored_key[3];
+ 288              		.loc 1 60 5 is_stmt 1 view .LVU76
+  60:simpleserial-speck.c ****     key_local[3] = stored_key[3];
+ 289              		.loc 1 60 30 is_stmt 0 view .LVU77
+ 290 0016 9A68     		ldr	r2, [r3, #8]
+  61:simpleserial-speck.c **** 
+ 291              		.loc 1 61 30 view .LVU78
+ 292 0018 DB68     		ldr	r3, [r3, #12]
+  61:simpleserial-speck.c **** 
+ 293              		.loc 1 61 18 view .LVU79
+ 294 001a 0793     		str	r3, [sp, #28]
+  48:simpleserial-speck.c ****     uint32_t pt32[2];
+ 295              		.loc 1 48 1 view .LVU80
+ 296 001c 0446     		mov	r4, r0
+  60:simpleserial-speck.c ****     key_local[3] = stored_key[3];
+ 297              		.loc 1 60 18 view .LVU81
+ 298 001e 0692     		str	r2, [sp, #24]
+  61:simpleserial-speck.c **** 
+ 299              		.loc 1 61 5 is_stmt 1 view .LVU82
+  64:simpleserial-speck.c ****     
+ 300              		.loc 1 64 5 view .LVU83
+ 301 0020 FFF7FEFF 		bl	trigger_high
+ 302              	.LVL14:
+  67:simpleserial-speck.c ****     
+ 303              		.loc 1 67 5 view .LVU84
+ 304 0024 04AA     		add	r2, sp, #16
+ 305 0026 02A9     		add	r1, sp, #8
+ 306 0028 6846     		mov	r0, sp
+ 307 002a FFF7FEFF 		bl	speck_encrypt
+ 308              	.LVL15:
+  70:simpleserial-speck.c **** 
+ 309              		.loc 1 70 5 view .LVU85
+ 310 002e FFF7FEFF 		bl	trigger_low
+ 311              	.LVL16:
+  74:simpleserial-speck.c ****     pt[1] = (ct32[0] >> 8) & 0xFF;
+ 312              		.loc 1 74 5 view .LVU86
+  74:simpleserial-speck.c ****     pt[1] = (ct32[0] >> 8) & 0xFF;
+ 313              		.loc 1 74 17 is_stmt 0 view .LVU87
+ 314 0032 029B     		ldr	r3, [sp, #8]
+  74:simpleserial-speck.c ****     pt[1] = (ct32[0] >> 8) & 0xFF;
+ 315              		.loc 1 74 11 view .LVU88
+ 316 0034 2370     		strb	r3, [r4]
+  75:simpleserial-speck.c ****     pt[2] = (ct32[0] >> 16) & 0xFF;
+ 317              		.loc 1 75 5 is_stmt 1 view .LVU89
+  75:simpleserial-speck.c ****     pt[2] = (ct32[0] >> 16) & 0xFF;
+ 318              		.loc 1 75 22 is_stmt 0 view .LVU90
+ 319 0036 1A0A     		lsrs	r2, r3, #8
+  75:simpleserial-speck.c ****     pt[2] = (ct32[0] >> 16) & 0xFF;
+ 320              		.loc 1 75 11 view .LVU91
+ 321 0038 6270     		strb	r2, [r4, #1]
+  76:simpleserial-speck.c ****     pt[3] = (ct32[0] >> 24) & 0xFF;
+ 322              		.loc 1 76 5 is_stmt 1 view .LVU92
+  76:simpleserial-speck.c ****     pt[3] = (ct32[0] >> 24) & 0xFF;
+ 323              		.loc 1 76 22 is_stmt 0 view .LVU93
+ 324 003a 1A0C     		lsrs	r2, r3, #16
+  77:simpleserial-speck.c ****     // 2-е слово
+ 325              		.loc 1 77 22 view .LVU94
+ 326 003c 1B0E     		lsrs	r3, r3, #24
+  77:simpleserial-speck.c ****     // 2-е слово
+ 327              		.loc 1 77 11 view .LVU95
+ 328 003e E370     		strb	r3, [r4, #3]
+  79:simpleserial-speck.c ****     pt[5] = (ct32[1] >> 8) & 0xFF;
+ 329              		.loc 1 79 17 view .LVU96
+ 330 0040 039B     		ldr	r3, [sp, #12]
+  76:simpleserial-speck.c ****     pt[3] = (ct32[0] >> 24) & 0xFF;
+ 331              		.loc 1 76 11 view .LVU97
+ 332 0042 A270     		strb	r2, [r4, #2]
+  77:simpleserial-speck.c ****     // 2-е слово
+ 333              		.loc 1 77 5 is_stmt 1 view .LVU98
+  79:simpleserial-speck.c ****     pt[5] = (ct32[1] >> 8) & 0xFF;
+ 334              		.loc 1 79 5 view .LVU99
+  80:simpleserial-speck.c ****     pt[6] = (ct32[1] >> 16) & 0xFF;
+ 335              		.loc 1 80 22 is_stmt 0 view .LVU100
+ 336 0044 1A0A     		lsrs	r2, r3, #8
+  79:simpleserial-speck.c ****     pt[5] = (ct32[1] >> 8) & 0xFF;
+ 337              		.loc 1 79 11 view .LVU101
+ 338 0046 2371     		strb	r3, [r4, #4]
+  80:simpleserial-speck.c ****     pt[6] = (ct32[1] >> 16) & 0xFF;
+ 339              		.loc 1 80 5 is_stmt 1 view .LVU102
+  80:simpleserial-speck.c ****     pt[6] = (ct32[1] >> 16) & 0xFF;
+ 340              		.loc 1 80 11 is_stmt 0 view .LVU103
+ 341 0048 6271     		strb	r2, [r4, #5]
+  81:simpleserial-speck.c ****     pt[7] = (ct32[1] >> 24) & 0xFF;
+ 342              		.loc 1 81 5 is_stmt 1 view .LVU104
+  81:simpleserial-speck.c ****     pt[7] = (ct32[1] >> 24) & 0xFF;
+ 343              		.loc 1 81 22 is_stmt 0 view .LVU105
+ 344 004a 1A0C     		lsrs	r2, r3, #16
+  82:simpleserial-speck.c **** 
+ 345              		.loc 1 82 22 view .LVU106
+ 346 004c 1B0E     		lsrs	r3, r3, #24
+  81:simpleserial-speck.c ****     pt[7] = (ct32[1] >> 24) & 0xFF;
+ 347              		.loc 1 81 11 view .LVU107
+ 348 004e A271     		strb	r2, [r4, #6]
+  82:simpleserial-speck.c **** 
+ 349              		.loc 1 82 5 is_stmt 1 view .LVU108
+  82:simpleserial-speck.c **** 
+ 350              		.loc 1 82 11 is_stmt 0 view .LVU109
+ 351 0050 E371     		strb	r3, [r4, #7]
+  84:simpleserial-speck.c ****     return 0x00;
+ 352              		.loc 1 84 5 is_stmt 1 view .LVU110
+ 353 0052 2246     		mov	r2, r4
+ 354 0054 1021     		movs	r1, #16
+ 355 0056 7220     		movs	r0, #114
+ 356 0058 FFF7FEFF 		bl	simpleserial_put
+ 357              	.LVL17:
+  85:simpleserial-speck.c **** }
+ 358              		.loc 1 85 5 view .LVU111
+  86:simpleserial-speck.c **** 
+ 359              		.loc 1 86 1 is_stmt 0 view .LVU112
+ 360 005c 0020     		movs	r0, #0
+ 361 005e 08B0     		add	sp, sp, #32
+ 362              	.LCFI5:
+ 363              		.cfi_def_cfa_offset 8
+ 364              		@ sp needed
+ 365 0060 10BD     		pop	{r4, pc}
+ 366              	.LVL18:
+ 367              	.L12:
+  86:simpleserial-speck.c **** 
+ 368              		.loc 1 86 1 view .LVU113
+ 369 0062 00BF     		.align	2
+ 370              	.L11:
+ 371 0064 00000000 		.word	.LANCHOR0
+ 372              		.cfi_endproc
+ 373              	.LFE4:
+ 375              		.section	.text.startup.main,"ax",%progbits
+ 376              		.align	1
+ 377              		.global	main
+ 378              		.syntax unified
+ 379              		.thumb
+ 380              		.thumb_func
+ 381              		.fpu softvfp
+ 383              	main:
+ 384              	.LFB6:
+  89:simpleserial-speck.c **** 
+  90:simpleserial-speck.c **** int main(void)
+  91:simpleserial-speck.c **** {
+ 385              		.loc 1 91 1 is_stmt 1 view -0
+ 386              		.cfi_startproc
+ 387              		@ Volatile: function does not return.
+ 388              		@ args = 0, pretend = 0, frame = 0
+ 389              		@ frame_needed = 0, uses_anonymous_args = 0
+  92:simpleserial-speck.c ****     platform_init();
+ 390              		.loc 1 92 5 view .LVU115
+  91:simpleserial-speck.c ****     platform_init();
+ 391              		.loc 1 91 1 is_stmt 0 view .LVU116
+ 392 0000 08B5     		push	{r3, lr}
+ 393              	.LCFI6:
+ 394              		.cfi_def_cfa_offset 8
+ 395              		.cfi_offset 3, -8
+ 396              		.cfi_offset 14, -4
+ 397              		.loc 1 92 5 view .LVU117
+ 398 0002 FFF7FEFF 		bl	platform_init
+ 399              	.LVL19:
+  93:simpleserial-speck.c ****     init_uart();
+ 400              		.loc 1 93 5 is_stmt 1 view .LVU118
+ 401 0006 FFF7FEFF 		bl	init_uart
+ 402              	.LVL20:
+  94:simpleserial-speck.c ****     trigger_setup();
+ 403              		.loc 1 94 5 view .LVU119
+ 404 000a FFF7FEFF 		bl	trigger_setup
+ 405              	.LVL21:
+  95:simpleserial-speck.c ****     simpleserial_init();
+ 406              		.loc 1 95 5 view .LVU120
+ 407 000e FFF7FEFF 		bl	simpleserial_init
+ 408              	.LVL22:
+  96:simpleserial-speck.c **** 
+  97:simpleserial-speck.c ****     simpleserial_addcmd('k', 16, set_key);
+ 409              		.loc 1 97 5 view .LVU121
+ 410 0012 094A     		ldr	r2, .L15
+ 411 0014 1021     		movs	r1, #16
+ 412 0016 6B20     		movs	r0, #107
+ 413 0018 FFF7FEFF 		bl	simpleserial_addcmd
+ 414              	.LVL23:
+  98:simpleserial-speck.c ****     simpleserial_addcmd('p', 16, get_pt);
+ 415              		.loc 1 98 5 view .LVU122
+ 416 001c 074A     		ldr	r2, .L15+4
+ 417 001e 1021     		movs	r1, #16
+ 418 0020 7020     		movs	r0, #112
+ 419 0022 FFF7FEFF 		bl	simpleserial_addcmd
+ 420              	.LVL24:
+  99:simpleserial-speck.c ****     simpleserial_addcmd('x', 0, reset);
+ 421              		.loc 1 99 5 view .LVU123
+ 422 0026 064A     		ldr	r2, .L15+8
+ 423 0028 0021     		movs	r1, #0
+ 424 002a 7820     		movs	r0, #120
+ 425 002c FFF7FEFF 		bl	simpleserial_addcmd
+ 426              	.LVL25:
+ 427              	.L14:
+ 100:simpleserial-speck.c **** 
+ 101:simpleserial-speck.c ****     while(1) simpleserial_get();
+ 428              		.loc 1 101 5 discriminator 1 view .LVU124
+ 429              		.loc 1 101 14 discriminator 1 view .LVU125
+ 430 0030 FFF7FEFF 		bl	simpleserial_get
+ 431              	.LVL26:
+ 432              		.loc 1 101 10 discriminator 1 view .LVU126
+ 433 0034 FCE7     		b	.L14
+ 434              	.L16:
+ 435 0036 00BF     		.align	2
+ 436              	.L15:
+ 437 0038 00000000 		.word	set_key
+ 438 003c 00000000 		.word	get_pt
+ 439 0040 00000000 		.word	reset
+ 440              		.cfi_endproc
+ 441              	.LFE6:
+ 443              		.global	stored_key
+ 444              		.bss
+ 445              		.align	2
+ 446              		.set	.LANCHOR0,. + 0
+ 449              	stored_key:
+ 450 0000 00000000 		.space	16
+ 450      00000000 
+ 450      00000000 
+ 450      00000000 
+ 451              		.text
+ 452              	.Letext0:
+ 453              		.file 3 "c:\\users\\vadim\\chipwh~1\\cw\\home\\portable\\armgcc\\arm-none-eabi\\include\\machine\\
+ 454              		.file 4 "c:\\users\\vadim\\chipwh~1\\cw\\home\\portable\\armgcc\\arm-none-eabi\\include\\sys\\_std
+ 455              		.file 5 ".././hal/stm32f3/stm32f3_hal.h"
+ 456              		.file 6 ".././simpleserial/simpleserial.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 simpleserial-speck.c
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:16     .text.set_key:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:24     .text.set_key:00000000 set_key
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:64     .text.set_key:00000018 $d
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:69     .text.reset:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:76     .text.reset:00000000 reset
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:94     .text.led_ok:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:101    .text.led_ok:00000000 led_ok
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:116    .text.led_error:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:123    .text.led_error:00000000 led_error
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:134    .text.speck_encrypt:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:141    .text.speck_encrypt:00000000 speck_encrypt
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:241    .text.get_pt:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:248    .text.get_pt:00000000 get_pt
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:371    .text.get_pt:00000064 $d
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:376    .text.startup.main:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:383    .text.startup.main:00000000 main
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:437    .text.startup.main:00000038 $d
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:449    .bss:00000000 stored_key
+C:\Users\Vadim\AppData\Local\Temp\ccmGcBV3.s:445    .bss:00000000 $d
+
+UNDEFINED SYMBOLS
+trigger_high
+trigger_low
+simpleserial_put
+platform_init
+init_uart
+trigger_setup
+simpleserial_init
+simpleserial_addcmd
+simpleserial_get

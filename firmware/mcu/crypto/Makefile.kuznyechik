@@ -1,0 +1,6 @@
+########
+CRYPTO_LIB = kuznyechik
+SRC += gost.c gost-independant.c
+CDEFS += -DKUZNYECHIK
+VPATH += :$(FIRMWAREPATH)/crypto/$(CRYPTO_LIB)
+EXTRAINCDIRS += $(FIRMWAREPATH)/crypto/$(CRYPTO_LIB)

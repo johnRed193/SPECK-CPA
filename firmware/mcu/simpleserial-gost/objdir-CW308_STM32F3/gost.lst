@@ -1,0 +1,994 @@
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 4
+   9              		.eabi_attribute 34, 1
+  10              		.eabi_attribute 18, 4
+  11              		.file	"gost.c"
+  12              		.text
+  13              	.Ltext0:
+  14              		.cfi_sections	.debug_frame
+  15              		.section	.text.kuz_l,"ax",%progbits
+  16              		.align	1
+  17              		.arch armv7e-m
+  18              		.syntax unified
+  19              		.thumb
+  20              		.thumb_func
+  21              		.fpu softvfp
+  23              	kuz_l:
+  24              	.LVL0:
+  25              	.LFB1:
+  26              		.file 1 ".././crypto/kuznyechik/gost.c"
+   1:.././crypto/kuznyechik/gost.c **** #include <string.h>
+   2:.././crypto/kuznyechik/gost.c **** #include "gost.h"
+   3:.././crypto/kuznyechik/gost.c **** 
+   4:.././crypto/kuznyechik/gost.c **** static uint8_t Key[GOST_KEYLEN];
+   5:.././crypto/kuznyechik/gost.c **** 
+   6:.././crypto/kuznyechik/gost.c **** static kuz_key_t round_keys;
+   7:.././crypto/kuznyechik/gost.c **** 
+   8:.././crypto/kuznyechik/gost.c **** static const uint8_t kuz_pi[0x100] = {
+   9:.././crypto/kuznyechik/gost.c ****   0xFC, 0xEE, 0xDD, 0x11, 0xCF, 0x6E, 0x31, 0x16,  // 00..07
+  10:.././crypto/kuznyechik/gost.c ****   0xFB, 0xC4, 0xFA, 0xDA, 0x23, 0xC5, 0x04, 0x4D,  // 08..0F
+  11:.././crypto/kuznyechik/gost.c ****   0xE9, 0x77, 0xF0, 0xDB, 0x93, 0x2E, 0x99, 0xBA,  // 10..17
+  12:.././crypto/kuznyechik/gost.c ****   0x17, 0x36, 0xF1, 0xBB, 0x14, 0xCD, 0x5F, 0xC1,  // 18..1F
+  13:.././crypto/kuznyechik/gost.c ****   0xF9, 0x18, 0x65, 0x5A, 0xE2, 0x5C, 0xEF, 0x21,  // 20..27
+  14:.././crypto/kuznyechik/gost.c ****   0x81, 0x1C, 0x3C, 0x42, 0x8B, 0x01, 0x8E, 0x4F,  // 28..2F
+  15:.././crypto/kuznyechik/gost.c ****   0x05, 0x84, 0x02, 0xAE, 0xE3, 0x6A, 0x8F, 0xA0,  // 30..37
+  16:.././crypto/kuznyechik/gost.c ****   0x06, 0x0B, 0xED, 0x98, 0x7F, 0xD4, 0xD3, 0x1F,  // 38..3F
+  17:.././crypto/kuznyechik/gost.c ****   0xEB, 0x34, 0x2C, 0x51, 0xEA, 0xC8, 0x48, 0xAB,  // 40..47
+  18:.././crypto/kuznyechik/gost.c ****   0xF2, 0x2A, 0x68, 0xA2, 0xFD, 0x3A, 0xCE, 0xCC,  // 48..4F
+  19:.././crypto/kuznyechik/gost.c ****   0xB5, 0x70, 0x0E, 0x56, 0x08, 0x0C, 0x76, 0x12,  // 50..57
+  20:.././crypto/kuznyechik/gost.c ****   0xBF, 0x72, 0x13, 0x47, 0x9C, 0xB7, 0x5D, 0x87,  // 58..5F
+  21:.././crypto/kuznyechik/gost.c ****   0x15, 0xA1, 0x96, 0x29, 0x10, 0x7B, 0x9A, 0xC7,  // 60..67
+  22:.././crypto/kuznyechik/gost.c ****   0xF3, 0x91, 0x78, 0x6F, 0x9D, 0x9E, 0xB2, 0xB1,  // 68..6F
+  23:.././crypto/kuznyechik/gost.c ****   0x32, 0x75, 0x19, 0x3D, 0xFF, 0x35, 0x8A, 0x7E,  // 70..77
+  24:.././crypto/kuznyechik/gost.c ****   0x6D, 0x54, 0xC6, 0x80, 0xC3, 0xBD, 0x0D, 0x57,  // 78..7F
+  25:.././crypto/kuznyechik/gost.c ****   0xDF, 0xF5, 0x24, 0xA9, 0x3E, 0xA8, 0x43, 0xC9,  // 80..87
+  26:.././crypto/kuznyechik/gost.c ****   0xD7, 0x79, 0xD6, 0xF6, 0x7C, 0x22, 0xB9, 0x03,  // 88..8F
+  27:.././crypto/kuznyechik/gost.c ****   0xE0, 0x0F, 0xEC, 0xDE, 0x7A, 0x94, 0xB0, 0xBC,  // 90..97
+  28:.././crypto/kuznyechik/gost.c ****   0xDC, 0xE8, 0x28, 0x50, 0x4E, 0x33, 0x0A, 0x4A,  // 98..9F
+  29:.././crypto/kuznyechik/gost.c ****   0xA7, 0x97, 0x60, 0x73, 0x1E, 0x00, 0x62, 0x44,  // A0..A7
+  30:.././crypto/kuznyechik/gost.c ****   0x1A, 0xB8, 0x38, 0x82, 0x64, 0x9F, 0x26, 0x41,  // A8..AF
+  31:.././crypto/kuznyechik/gost.c ****   0xAD, 0x45, 0x46, 0x92, 0x27, 0x5E, 0x55, 0x2F,  // B0..B7
+  32:.././crypto/kuznyechik/gost.c ****   0x8C, 0xA3, 0xA5, 0x7D, 0x69, 0xD5, 0x95, 0x3B,  // B8..BF
+  33:.././crypto/kuznyechik/gost.c ****   0x07, 0x58, 0xB3, 0x40, 0x86, 0xAC, 0x1D, 0xF7,  // C0..C7
+  34:.././crypto/kuznyechik/gost.c ****   0x30, 0x37, 0x6B, 0xE4, 0x88, 0xD9, 0xE7, 0x89,  // C8..CF
+  35:.././crypto/kuznyechik/gost.c ****   0xE1, 0x1B, 0x83, 0x49, 0x4C, 0x3F, 0xF8, 0xFE,  // D0..D7
+  36:.././crypto/kuznyechik/gost.c ****   0x8D, 0x53, 0xAA, 0x90, 0xCA, 0xD8, 0x85, 0x61,  // D8..DF
+  37:.././crypto/kuznyechik/gost.c ****   0x20, 0x71, 0x67, 0xA4, 0x2D, 0x2B, 0x09, 0x5B,  // E0..E7
+  38:.././crypto/kuznyechik/gost.c ****   0xCB, 0x9B, 0x25, 0xD0, 0xBE, 0xE5, 0x6C, 0x52,  // E8..EF
+  39:.././crypto/kuznyechik/gost.c ****   0x59, 0xA6, 0x74, 0xD2, 0xE6, 0xF4, 0xB4, 0xC0,  // F0..F7
+  40:.././crypto/kuznyechik/gost.c ****   0xD1, 0x66, 0xAF, 0xC2, 0x39, 0x4B, 0x63, 0xB6,  // F8..FF
+  41:.././crypto/kuznyechik/gost.c **** };
+  42:.././crypto/kuznyechik/gost.c **** 
+  43:.././crypto/kuznyechik/gost.c **** static const uint8_t kuz_lvec[GOST_BLOCKLEN] = {
+  44:.././crypto/kuznyechik/gost.c ****   0x94, 0x20, 0x85, 0x10, 0xC2, 0xC0, 0x01, 0xFB, 
+  45:.././crypto/kuznyechik/gost.c ****   0x01, 0xC0, 0xC2, 0x10, 0x85, 0x20, 0x94, 0x01
+  46:.././crypto/kuznyechik/gost.c **** };
+  47:.././crypto/kuznyechik/gost.c **** 
+  48:.././crypto/kuznyechik/gost.c **** // poly multiplication mod p(x) = x^8 + x^7 + x^6 + x + 1
+  49:.././crypto/kuznyechik/gost.c **** static uint8_t kuz_mul_gf256(uint8_t x, uint8_t y) {
+  50:.././crypto/kuznyechik/gost.c ****   uint8_t z = 0;
+  51:.././crypto/kuznyechik/gost.c ****  
+  52:.././crypto/kuznyechik/gost.c ****   for (int i = 0; i < 8; ++i) {
+  53:.././crypto/kuznyechik/gost.c ****     if (y & 1)
+  54:.././crypto/kuznyechik/gost.c ****       z ^= x;
+  55:.././crypto/kuznyechik/gost.c ****       x = (x << 1) ^ (x & 0x80 ? 0xC3 : 0x00);
+  56:.././crypto/kuznyechik/gost.c ****       y >>= 1;
+  57:.././crypto/kuznyechik/gost.c ****   }
+  58:.././crypto/kuznyechik/gost.c ****   return z;
+  59:.././crypto/kuznyechik/gost.c **** }
+  60:.././crypto/kuznyechik/gost.c **** 
+  61:.././crypto/kuznyechik/gost.c **** // (slow) linear operation l
+  62:.././crypto/kuznyechik/gost.c **** static void kuz_l(w128_t *w) {
+  27              		.loc 1 62 30 view -0
+  28              		.cfi_startproc
+  29              		@ args = 0, pretend = 0, frame = 0
+  30              		@ frame_needed = 0, uses_anonymous_args = 0
+  63:.././crypto/kuznyechik/gost.c ****   int i, j;
+  31              		.loc 1 63 3 view .LVU1
+  64:.././crypto/kuznyechik/gost.c ****   uint8_t x;
+  32              		.loc 1 64 3 view .LVU2
+  65:.././crypto/kuznyechik/gost.c **** 
+  66:.././crypto/kuznyechik/gost.c ****   // 16 rounds
+  67:.././crypto/kuznyechik/gost.c ****   for (j = 0; j < 16; j++) {
+  33              		.loc 1 67 3 view .LVU3
+  34              		.loc 1 67 15 view .LVU4
+  62:.././crypto/kuznyechik/gost.c ****   int i, j;
+  35              		.loc 1 62 30 is_stmt 0 view .LVU5
+  36 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+  37              	.LCFI0:
+  38              		.cfi_def_cfa_offset 20
+  39              		.cfi_offset 4, -20
+  40              		.cfi_offset 5, -16
+  41              		.cfi_offset 6, -12
+  42              		.cfi_offset 7, -8
+  43              		.cfi_offset 14, -4
+  62:.././crypto/kuznyechik/gost.c ****   int i, j;
+  44              		.loc 1 62 30 view .LVU6
+  45 0002 1021     		movs	r1, #16
+  46              	.LVL1:
+  47              	.L6:
+  68:.././crypto/kuznyechik/gost.c ****     // An LFSR with 16 elements from GF(2^8)
+  69:.././crypto/kuznyechik/gost.c ****     x = w->b[15];    // since lvec[15] = 1
+  48              		.loc 1 69 5 is_stmt 1 view .LVU7
+  49              		.loc 1 69 7 is_stmt 0 view .LVU8
+  50 0004 0246     		mov	r2, r0
+  51 0006 DFF84CC0 		ldr	ip, .L14
+  52 000a 12F80F4F 		ldrb	r4, [r2, #15]!	@ zero_extendqisi2
+  53              	.LVL2:
+  70:.././crypto/kuznyechik/gost.c **** 
+  71:.././crypto/kuznyechik/gost.c ****     for (i = 14; i >= 0; i--) {
+  54              		.loc 1 71 5 is_stmt 1 view .LVU9
+  55              		.loc 1 71 18 view .LVU10
+  56              	.L5:
+  72:.././crypto/kuznyechik/gost.c ****       w->b[i+1] = w->b[i];
+  57              		.loc 1 72 7 discriminator 3 view .LVU11
+  58              		.loc 1 72 23 is_stmt 0 discriminator 3 view .LVU12
+  59 000e 12F8013C 		ldrb	r3, [r2, #-1]	@ zero_extendqisi2
+  60              		.loc 1 72 17 discriminator 3 view .LVU13
+  61 0012 02F80139 		strb	r3, [r2], #-1
+  73:.././crypto/kuznyechik/gost.c ****       x ^= kuz_mul_gf256(w->b[i], kuz_lvec[i]);
+  62              		.loc 1 73 7 is_stmt 1 discriminator 3 view .LVU14
+  63              		.loc 1 73 12 is_stmt 0 discriminator 3 view .LVU15
+  64 0016 1CF80179 		ldrb	r7, [ip], #-1	@ zero_extendqisi2
+  65              	.LVL3:
+  66              	.LBB5:
+  67              	.LBI5:
+  49:.././crypto/kuznyechik/gost.c ****   uint8_t z = 0;
+  68              		.loc 1 49 16 is_stmt 1 discriminator 3 view .LVU16
+  69              	.LBB6:
+  50:.././crypto/kuznyechik/gost.c ****  
+  70              		.loc 1 50 3 discriminator 3 view .LVU17
+  52:.././crypto/kuznyechik/gost.c ****     if (y & 1)
+  71              		.loc 1 52 3 discriminator 3 view .LVU18
+  72              	.LBB7:
+  52:.././crypto/kuznyechik/gost.c ****     if (y & 1)
+  73              		.loc 1 52 8 discriminator 3 view .LVU19
+  52:.././crypto/kuznyechik/gost.c ****     if (y & 1)
+  74              		.loc 1 52 19 discriminator 3 view .LVU20
+  75              	.LBE7:
+  76              	.LBE6:
+  77              	.LBE5:
+  78              		.loc 1 73 12 is_stmt 0 discriminator 3 view .LVU21
+  79 001a 0826     		movs	r6, #8
+  80              	.LBB10:
+  81              	.LBB9:
+  50:.././crypto/kuznyechik/gost.c ****  
+  82              		.loc 1 50 11 discriminator 3 view .LVU22
+  83 001c 0025     		movs	r5, #0
+  84              	.LVL4:
+  85              	.L4:
+  86              	.LBB8:
+  53:.././crypto/kuznyechik/gost.c ****       z ^= x;
+  87              		.loc 1 53 5 is_stmt 1 view .LVU23
+  53:.././crypto/kuznyechik/gost.c ****       z ^= x;
+  88              		.loc 1 53 8 is_stmt 0 view .LVU24
+  89 001e 17F0010F 		tst	r7, #1
+  54:.././crypto/kuznyechik/gost.c ****       x = (x << 1) ^ (x & 0x80 ? 0xC3 : 0x00);
+  90              		.loc 1 54 7 is_stmt 1 view .LVU25
+  54:.././crypto/kuznyechik/gost.c ****       x = (x << 1) ^ (x & 0x80 ? 0xC3 : 0x00);
+  91              		.loc 1 54 9 is_stmt 0 view .LVU26
+  92 0022 18BF     		it	ne
+  93 0024 5D40     		eorne	r5, r5, r3
+  94              	.LVL5:
+  55:.././crypto/kuznyechik/gost.c ****       y >>= 1;
+  95              		.loc 1 55 7 is_stmt 1 view .LVU27
+  55:.././crypto/kuznyechik/gost.c ****       y >>= 1;
+  96              		.loc 1 55 20 is_stmt 0 view .LVU28
+  97 0026 13F0800F 		tst	r3, #128
+  98 002a 43F3060E 		sbfx	lr, r3, #0, #7
+  99 002e 14BF     		ite	ne
+ 100 0030 6FF03C03 		mvnne	r3, #60
+ 101              	.LVL6:
+  55:.././crypto/kuznyechik/gost.c ****       y >>= 1;
+ 102              		.loc 1 55 20 view .LVU29
+ 103 0034 0023     		moveq	r3, #0
+ 104 0036 83EA4E03 		eor	r3, r3, lr, lsl #1
+  52:.././crypto/kuznyechik/gost.c ****     if (y & 1)
+ 105              		.loc 1 52 3 view .LVU30
+ 106 003a 013E     		subs	r6, r6, #1
+ 107              	.LVL7:
+  55:.././crypto/kuznyechik/gost.c ****       y >>= 1;
+ 108              		.loc 1 55 9 view .LVU31
+ 109 003c DBB2     		uxtb	r3, r3
+ 110              	.LVL8:
+  56:.././crypto/kuznyechik/gost.c ****   }
+ 111              		.loc 1 56 7 is_stmt 1 view .LVU32
+  56:.././crypto/kuznyechik/gost.c ****   }
+ 112              		.loc 1 56 9 is_stmt 0 view .LVU33
+ 113 003e 4FEA5707 		lsr	r7, r7, #1
+ 114              	.LVL9:
+  52:.././crypto/kuznyechik/gost.c ****     if (y & 1)
+ 115              		.loc 1 52 26 is_stmt 1 view .LVU34
+  52:.././crypto/kuznyechik/gost.c ****     if (y & 1)
+ 116              		.loc 1 52 19 view .LVU35
+  52:.././crypto/kuznyechik/gost.c ****     if (y & 1)
+ 117              		.loc 1 52 3 is_stmt 0 view .LVU36
+ 118 0042 ECD1     		bne	.L4
+ 119              	.LBE8:
+  58:.././crypto/kuznyechik/gost.c **** }
+ 120              		.loc 1 58 3 is_stmt 1 view .LVU37
+ 121              	.LVL10:
+  58:.././crypto/kuznyechik/gost.c **** }
+ 122              		.loc 1 58 3 is_stmt 0 view .LVU38
+ 123              	.LBE9:
+ 124              	.LBE10:
+  71:.././crypto/kuznyechik/gost.c ****       w->b[i+1] = w->b[i];
+ 125              		.loc 1 71 5 view .LVU39
+ 126 0044 8242     		cmp	r2, r0
+ 127              		.loc 1 73 9 view .LVU40
+ 128 0046 84EA0504 		eor	r4, r4, r5
+ 129              	.LVL11:
+  71:.././crypto/kuznyechik/gost.c ****       w->b[i+1] = w->b[i];
+ 130              		.loc 1 71 26 is_stmt 1 view .LVU41
+  71:.././crypto/kuznyechik/gost.c ****       w->b[i+1] = w->b[i];
+ 131              		.loc 1 71 18 view .LVU42
+  71:.././crypto/kuznyechik/gost.c ****       w->b[i+1] = w->b[i];
+ 132              		.loc 1 71 5 is_stmt 0 view .LVU43
+ 133 004a E0D1     		bne	.L5
+  74:.././crypto/kuznyechik/gost.c ****     }
+  75:.././crypto/kuznyechik/gost.c ****     w->b[0] = x;
+ 134              		.loc 1 75 5 is_stmt 1 discriminator 2 view .LVU44
+  67:.././crypto/kuznyechik/gost.c ****     // An LFSR with 16 elements from GF(2^8)
+ 135              		.loc 1 67 3 is_stmt 0 discriminator 2 view .LVU45
+ 136 004c 0139     		subs	r1, r1, #1
+ 137              	.LVL12:
+ 138              		.loc 1 75 13 discriminator 2 view .LVU46
+ 139 004e 1470     		strb	r4, [r2]
+  67:.././crypto/kuznyechik/gost.c ****     // An LFSR with 16 elements from GF(2^8)
+ 140              		.loc 1 67 23 is_stmt 1 discriminator 2 view .LVU47
+ 141              	.LVL13:
+  67:.././crypto/kuznyechik/gost.c ****     // An LFSR with 16 elements from GF(2^8)
+ 142              		.loc 1 67 15 discriminator 2 view .LVU48
+  67:.././crypto/kuznyechik/gost.c ****     // An LFSR with 16 elements from GF(2^8)
+ 143              		.loc 1 67 3 is_stmt 0 discriminator 2 view .LVU49
+ 144 0050 D8D1     		bne	.L6
+  76:.././crypto/kuznyechik/gost.c ****   }
+  77:.././crypto/kuznyechik/gost.c **** }
+ 145              		.loc 1 77 1 view .LVU50
+ 146 0052 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 147              	.LVL14:
+ 148              	.L15:
+ 149              		.loc 1 77 1 view .LVU51
+ 150              		.align	2
+ 151              	.L14:
+ 152 0054 0E000000 		.word	.LANCHOR0+14
+ 153              		.cfi_endproc
+ 154              	.LFE1:
+ 156              		.section	.text.GOST_ECB_indp_setkey,"ax",%progbits
+ 157              		.align	1
+ 158              		.global	GOST_ECB_indp_setkey
+ 159              		.syntax unified
+ 160              		.thumb
+ 161              		.thumb_func
+ 162              		.fpu softvfp
+ 164              	GOST_ECB_indp_setkey:
+ 165              	.LVL15:
+ 166              	.LFB4:
+  78:.././crypto/kuznyechik/gost.c **** 
+  79:.././crypto/kuznyechik/gost.c **** // key setup
+  80:.././crypto/kuznyechik/gost.c **** static void kuz_set_round_keys() {
+  81:.././crypto/kuznyechik/gost.c ****   int i, j;
+  82:.././crypto/kuznyechik/gost.c ****   w128_t c, x, y, z;
+  83:.././crypto/kuznyechik/gost.c **** 
+  84:.././crypto/kuznyechik/gost.c ****   for (i = 0; i < 16; i++) {
+  85:.././crypto/kuznyechik/gost.c ****     // this will be have to changed for little-endian systems
+  86:.././crypto/kuznyechik/gost.c ****     x.b[i] = Key[i];
+  87:.././crypto/kuznyechik/gost.c ****     y.b[i] = Key[i + 16];
+  88:.././crypto/kuznyechik/gost.c ****   }
+  89:.././crypto/kuznyechik/gost.c **** 
+  90:.././crypto/kuznyechik/gost.c ****   round_keys.k[0].q[0] = x.q[0];
+  91:.././crypto/kuznyechik/gost.c ****   round_keys.k[0].q[1] = x.q[1];
+  92:.././crypto/kuznyechik/gost.c ****   round_keys.k[1].q[0] = y.q[0];
+  93:.././crypto/kuznyechik/gost.c ****   round_keys.k[1].q[1] = y.q[1];
+  94:.././crypto/kuznyechik/gost.c **** 
+  95:.././crypto/kuznyechik/gost.c ****   for (i = 1; i <= 32; i++) {
+  96:.././crypto/kuznyechik/gost.c ****     // C Value
+  97:.././crypto/kuznyechik/gost.c ****     c.q[0] = 0;
+  98:.././crypto/kuznyechik/gost.c ****     c.q[1] = 0;
+  99:.././crypto/kuznyechik/gost.c ****     c.b[15] = i;        // load round in lsb
+ 100:.././crypto/kuznyechik/gost.c ****     kuz_l(&c);
+ 101:.././crypto/kuznyechik/gost.c ****  
+ 102:.././crypto/kuznyechik/gost.c ****     z.q[0] = x.q[0] ^ c.q[0];
+ 103:.././crypto/kuznyechik/gost.c ****     z.q[1] = x.q[1] ^ c.q[1];
+ 104:.././crypto/kuznyechik/gost.c ****     for (j = 0; j < 16; j++)
+ 105:.././crypto/kuznyechik/gost.c ****       z.b[j] = kuz_pi[z.b[j]];
+ 106:.././crypto/kuznyechik/gost.c ****     kuz_l(&z);
+ 107:.././crypto/kuznyechik/gost.c ****     z.q[0] ^= y.q[0];
+ 108:.././crypto/kuznyechik/gost.c ****     z.q[1] ^= y.q[1];
+ 109:.././crypto/kuznyechik/gost.c ****  
+ 110:.././crypto/kuznyechik/gost.c ****     y.q[0] = x.q[0];
+ 111:.././crypto/kuznyechik/gost.c ****     y.q[1] = x.q[1];
+ 112:.././crypto/kuznyechik/gost.c **** 
+ 113:.././crypto/kuznyechik/gost.c ****     x.q[0] = z.q[0];
+ 114:.././crypto/kuznyechik/gost.c ****     x.q[1] = z.q[1];
+ 115:.././crypto/kuznyechik/gost.c **** 
+ 116:.././crypto/kuznyechik/gost.c ****     if ((i & 7) == 0) {
+ 117:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2)].q[0] = x.q[0];
+ 118:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2)].q[1] = x.q[1];
+ 119:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2) + 1].q[0] = y.q[0];
+ 120:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2) + 1].q[1] = y.q[1];
+ 121:.././crypto/kuznyechik/gost.c ****     }
+ 122:.././crypto/kuznyechik/gost.c ****   }
+ 123:.././crypto/kuznyechik/gost.c **** }
+ 124:.././crypto/kuznyechik/gost.c **** 
+ 125:.././crypto/kuznyechik/gost.c **** // encrypt a block - 128 bit way
+ 126:.././crypto/kuznyechik/gost.c **** static void kuz_encrypt_block(uint8_t blk[GOST_BLOCKLEN]) {
+ 127:.././crypto/kuznyechik/gost.c ****   int i, j;
+ 128:.././crypto/kuznyechik/gost.c ****   w128_t x;
+ 129:.././crypto/kuznyechik/gost.c **** 
+ 130:.././crypto/kuznyechik/gost.c ****   x.q[0] = ((uint64_t *) blk)[0];
+ 131:.././crypto/kuznyechik/gost.c ****   x.q[1] = ((uint64_t *) blk)[1];
+ 132:.././crypto/kuznyechik/gost.c **** 
+ 133:.././crypto/kuznyechik/gost.c ****   for (i = 0; i < 9; i++) {
+ 134:.././crypto/kuznyechik/gost.c ****     x.q[0] ^= round_keys.k[i].q[0];
+ 135:.././crypto/kuznyechik/gost.c ****     x.q[1] ^= round_keys.k[i].q[1];
+ 136:.././crypto/kuznyechik/gost.c **** 
+ 137:.././crypto/kuznyechik/gost.c ****     for (j = 0; j < 16; j++)
+ 138:.././crypto/kuznyechik/gost.c ****       x.b[j] = kuz_pi[x.b[j]];
+ 139:.././crypto/kuznyechik/gost.c ****     kuz_l(&x);
+ 140:.././crypto/kuznyechik/gost.c ****   }
+ 141:.././crypto/kuznyechik/gost.c ****   ((uint64_t *) blk)[0] = x.q[0] ^ round_keys.k[9].q[0];
+ 142:.././crypto/kuznyechik/gost.c ****   ((uint64_t *) blk)[1] = x.q[1] ^ round_keys.k[9].q[1];
+ 143:.././crypto/kuznyechik/gost.c **** }
+ 144:.././crypto/kuznyechik/gost.c **** 
+ 145:.././crypto/kuznyechik/gost.c **** void GOST_ECB_indp_setkey(uint8_t* key) {
+ 167              		.loc 1 145 41 is_stmt 1 view -0
+ 168              		.cfi_startproc
+ 169              		@ args = 0, pretend = 0, frame = 64
+ 170              		@ frame_needed = 0, uses_anonymous_args = 0
+ 146:.././crypto/kuznyechik/gost.c ****   for (int i = 0; i < GOST_KEYLEN; i++)
+ 171              		.loc 1 146 3 view .LVU53
+ 172              	.LBB14:
+ 173              		.loc 1 146 8 view .LVU54
+ 174              		.loc 1 146 19 view .LVU55
+ 175              	.LBE14:
+ 145:.././crypto/kuznyechik/gost.c ****   for (int i = 0; i < GOST_KEYLEN; i++)
+ 176              		.loc 1 145 41 is_stmt 0 view .LVU56
+ 177 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 178              	.LCFI1:
+ 179              		.cfi_def_cfa_offset 36
+ 180              		.cfi_offset 4, -36
+ 181              		.cfi_offset 5, -32
+ 182              		.cfi_offset 6, -28
+ 183              		.cfi_offset 7, -24
+ 184              		.cfi_offset 8, -20
+ 185              		.cfi_offset 9, -16
+ 186              		.cfi_offset 10, -12
+ 187              		.cfi_offset 11, -8
+ 188              		.cfi_offset 14, -4
+ 189              	.LBB15:
+ 147:.././crypto/kuznyechik/gost.c ****     Key[i] = key[i];
+ 190              		.loc 1 147 12 view .LVU57
+ 191 0004 494B     		ldr	r3, .L28
+ 192              	.LBE15:
+ 145:.././crypto/kuznyechik/gost.c ****   for (int i = 0; i < GOST_KEYLEN; i++)
+ 193              		.loc 1 145 41 view .LVU58
+ 194 0006 91B0     		sub	sp, sp, #68
+ 195              	.LCFI2:
+ 196              		.cfi_def_cfa_offset 104
+ 197              	.LBB16:
+ 198              		.loc 1 147 12 view .LVU59
+ 199 0008 00F12002 		add	r2, r0, #32
+ 200 000c 1D46     		mov	r5, r3
+ 201              	.LVL16:
+ 202              	.L17:
+ 203              		.loc 1 147 12 view .LVU60
+ 204 000e 50F8041B 		ldr	r1, [r0], #4	@ unaligned
+ 205 0012 43F8041B 		str	r1, [r3], #4	@ unaligned
+ 206 0016 9042     		cmp	r0, r2
+ 207 0018 F9D1     		bne	.L17
+ 208              	.LVL17:
+ 209              		.loc 1 147 12 view .LVU61
+ 210              	.LBE16:
+ 211              	.LBB17:
+ 212              	.LBB18:
+  86:.././crypto/kuznyechik/gost.c ****     y.b[i] = Key[i + 16];
+ 213              		.loc 1 86 12 view .LVU62
+ 214 001a 444B     		ldr	r3, .L28
+ 215 001c 04AC     		add	r4, sp, #16
+ 216 001e 03F11006 		add	r6, r3, #16
+ 217              	.LVL18:
+ 218              	.L18:
+  86:.././crypto/kuznyechik/gost.c ****     y.b[i] = Key[i + 16];
+ 219              		.loc 1 86 12 view .LVU63
+ 220 0022 1868     		ldr	r0, [r3]	@ unaligned
+ 221 0024 5968     		ldr	r1, [r3, #4]	@ unaligned
+ 222 0026 2246     		mov	r2, r4
+ 223 0028 03C2     		stmia	r2!, {r0, r1}
+ 224 002a 0833     		adds	r3, r3, #8
+ 225 002c B342     		cmp	r3, r6
+ 226 002e 1446     		mov	r4, r2
+ 227 0030 F7D1     		bne	.L18
+  87:.././crypto/kuznyechik/gost.c ****   }
+ 228              		.loc 1 87 12 view .LVU64
+ 229 0032 3F4B     		ldr	r3, .L28+4
+ 230 0034 08AC     		add	r4, sp, #32
+ 231 0036 03F11006 		add	r6, r3, #16
+ 232              	.L19:
+ 233 003a 1868     		ldr	r0, [r3]	@ unaligned
+ 234 003c 5968     		ldr	r1, [r3, #4]	@ unaligned
+ 235 003e 2246     		mov	r2, r4
+ 236 0040 03C2     		stmia	r2!, {r0, r1}
+ 237 0042 0833     		adds	r3, r3, #8
+ 238 0044 B342     		cmp	r3, r6
+ 239 0046 1446     		mov	r4, r2
+ 240 0048 F7D1     		bne	.L19
+  90:.././crypto/kuznyechik/gost.c ****   round_keys.k[0].q[1] = x.q[1];
+ 241              		.loc 1 90 3 is_stmt 1 view .LVU65
+  90:.././crypto/kuznyechik/gost.c ****   round_keys.k[0].q[1] = x.q[1];
+ 242              		.loc 1 90 24 is_stmt 0 view .LVU66
+ 243 004a DDE90423 		ldrd	r2, [sp, #16]
+ 244 004e C5E90823 		strd	r2, [r5, #32]
+  91:.././crypto/kuznyechik/gost.c ****   round_keys.k[1].q[0] = y.q[0];
+ 245              		.loc 1 91 3 is_stmt 1 view .LVU67
+  91:.././crypto/kuznyechik/gost.c ****   round_keys.k[1].q[0] = y.q[0];
+ 246              		.loc 1 91 24 is_stmt 0 view .LVU68
+ 247 0052 DDE90623 		ldrd	r2, [sp, #24]
+ 248 0056 C5E90A23 		strd	r2, [r5, #40]
+  92:.././crypto/kuznyechik/gost.c ****   round_keys.k[1].q[1] = y.q[1];
+ 249              		.loc 1 92 3 is_stmt 1 view .LVU69
+  92:.././crypto/kuznyechik/gost.c ****   round_keys.k[1].q[1] = y.q[1];
+ 250              		.loc 1 92 24 is_stmt 0 view .LVU70
+ 251 005a DDE90823 		ldrd	r2, [sp, #32]
+ 252 005e C5E90C23 		strd	r2, [r5, #48]
+  93:.././crypto/kuznyechik/gost.c **** 
+ 253              		.loc 1 93 3 is_stmt 1 view .LVU71
+  93:.././crypto/kuznyechik/gost.c **** 
+ 254              		.loc 1 93 24 is_stmt 0 view .LVU72
+ 255 0062 DDE90A23 		ldrd	r2, [sp, #40]
+ 256 0066 C5E90E23 		strd	r2, [r5, #56]
+  95:.././crypto/kuznyechik/gost.c ****     // C Value
+ 257              		.loc 1 95 3 is_stmt 1 view .LVU73
+ 258              	.LVL19:
+  95:.././crypto/kuznyechik/gost.c ****     // C Value
+ 259              		.loc 1 95 15 view .LVU74
+  95:.././crypto/kuznyechik/gost.c ****     // C Value
+ 260              		.loc 1 95 10 is_stmt 0 view .LVU75
+ 261 006a 0124     		movs	r4, #1
+  97:.././crypto/kuznyechik/gost.c ****     c.q[1] = 0;
+ 262              		.loc 1 97 12 view .LVU76
+ 263 006c 4FF0000A 		mov	r10, #0
+ 264 0070 4FF0000B 		mov	fp, #0
+ 265              	.LVL20:
+ 266              	.L22:
+  97:.././crypto/kuznyechik/gost.c ****     c.q[1] = 0;
+ 267              		.loc 1 97 5 is_stmt 1 view .LVU77
+ 100:.././crypto/kuznyechik/gost.c ****  
+ 268              		.loc 1 100 5 is_stmt 0 view .LVU78
+ 269 0074 6846     		mov	r0, sp
+  98:.././crypto/kuznyechik/gost.c ****     c.b[15] = i;        // load round in lsb
+ 270              		.loc 1 98 12 view .LVU79
+ 271 0076 CDE902AB 		strd	r10, [sp, #8]
+  97:.././crypto/kuznyechik/gost.c ****     c.q[1] = 0;
+ 272              		.loc 1 97 12 view .LVU80
+ 273 007a CDE900AB 		strd	r10, [sp]
+  98:.././crypto/kuznyechik/gost.c ****     c.b[15] = i;        // load round in lsb
+ 274              		.loc 1 98 5 is_stmt 1 view .LVU81
+  99:.././crypto/kuznyechik/gost.c ****     kuz_l(&c);
+ 275              		.loc 1 99 5 view .LVU82
+  99:.././crypto/kuznyechik/gost.c ****     kuz_l(&c);
+ 276              		.loc 1 99 13 is_stmt 0 view .LVU83
+ 277 007e 8DF80F40 		strb	r4, [sp, #15]
+ 100:.././crypto/kuznyechik/gost.c ****  
+ 278              		.loc 1 100 5 is_stmt 1 view .LVU84
+ 279 0082 FFF7FEFF 		bl	kuz_l
+ 280              	.LVL21:
+ 102:.././crypto/kuznyechik/gost.c ****     z.q[1] = x.q[1] ^ c.q[1];
+ 281              		.loc 1 102 5 view .LVU85
+ 102:.././crypto/kuznyechik/gost.c ****     z.q[1] = x.q[1] ^ c.q[1];
+ 282              		.loc 1 102 17 is_stmt 0 view .LVU86
+ 283 0086 DDE90498 		ldrd	r9, r8, [sp, #16]
+ 102:.././crypto/kuznyechik/gost.c ****     z.q[1] = x.q[1] ^ c.q[1];
+ 284              		.loc 1 102 21 view .LVU87
+ 285 008a 009B     		ldr	r3, [sp]
+ 286 008c 83EA0902 		eor	r2, r3, r9
+ 287 0090 019B     		ldr	r3, [sp, #4]
+ 103:.././crypto/kuznyechik/gost.c ****     for (j = 0; j < 16; j++)
+ 288              		.loc 1 103 17 view .LVU88
+ 289 0092 DDE90676 		ldrd	r7, r6, [sp, #24]
+ 102:.././crypto/kuznyechik/gost.c ****     z.q[1] = x.q[1] ^ c.q[1];
+ 290              		.loc 1 102 21 view .LVU89
+ 291 0096 83EA0803 		eor	r3, r3, r8
+ 102:.././crypto/kuznyechik/gost.c ****     z.q[1] = x.q[1] ^ c.q[1];
+ 292              		.loc 1 102 12 view .LVU90
+ 293 009a CDE90C23 		strd	r2, r3, [sp, #48]
+ 103:.././crypto/kuznyechik/gost.c ****     for (j = 0; j < 16; j++)
+ 294              		.loc 1 103 5 is_stmt 1 view .LVU91
+ 103:.././crypto/kuznyechik/gost.c ****     for (j = 0; j < 16; j++)
+ 295              		.loc 1 103 21 is_stmt 0 view .LVU92
+ 296 009e 029B     		ldr	r3, [sp, #8]
+ 297 00a0 83EA0702 		eor	r2, r3, r7
+ 298 00a4 039B     		ldr	r3, [sp, #12]
+ 299 00a6 7340     		eors	r3, r3, r6
+ 103:.././crypto/kuznyechik/gost.c ****     for (j = 0; j < 16; j++)
+ 300              		.loc 1 103 12 view .LVU93
+ 301 00a8 CDE90E23 		strd	r2, r3, [sp, #56]
+ 104:.././crypto/kuznyechik/gost.c ****       z.b[j] = kuz_pi[z.b[j]];
+ 302              		.loc 1 104 5 is_stmt 1 view .LVU94
+ 303              	.LVL22:
+ 104:.././crypto/kuznyechik/gost.c ****       z.b[j] = kuz_pi[z.b[j]];
+ 304              		.loc 1 104 17 view .LVU95
+ 305 00ac 0CAB     		add	r3, sp, #48
+ 103:.././crypto/kuznyechik/gost.c ****     for (j = 0; j < 16; j++)
+ 306              		.loc 1 103 12 is_stmt 0 view .LVU96
+ 307 00ae 1022     		movs	r2, #16
+ 308 00b0 1846     		mov	r0, r3
+ 309              	.LVL23:
+ 310              	.L20:
+ 105:.././crypto/kuznyechik/gost.c ****     kuz_l(&z);
+ 311              		.loc 1 105 7 is_stmt 1 view .LVU97
+ 105:.././crypto/kuznyechik/gost.c ****     kuz_l(&z);
+ 312              		.loc 1 105 26 is_stmt 0 view .LVU98
+ 313 00b2 1978     		ldrb	r1, [r3]	@ zero_extendqisi2
+ 105:.././crypto/kuznyechik/gost.c ****     kuz_l(&z);
+ 314              		.loc 1 105 22 view .LVU99
+ 315 00b4 DFF87CC0 		ldr	ip, .L28+8
+ 316 00b8 6144     		add	r1, r1, ip
+ 104:.././crypto/kuznyechik/gost.c ****       z.b[j] = kuz_pi[z.b[j]];
+ 317              		.loc 1 104 5 view .LVU100
+ 318 00ba 013A     		subs	r2, r2, #1
+ 105:.././crypto/kuznyechik/gost.c ****     kuz_l(&z);
+ 319              		.loc 1 105 14 view .LVU101
+ 320 00bc 097C     		ldrb	r1, [r1, #16]	@ zero_extendqisi2
+ 321 00be 03F8011B 		strb	r1, [r3], #1
+ 322              	.LVL24:
+ 104:.././crypto/kuznyechik/gost.c ****       z.b[j] = kuz_pi[z.b[j]];
+ 323              		.loc 1 104 25 is_stmt 1 view .LVU102
+ 104:.././crypto/kuznyechik/gost.c ****       z.b[j] = kuz_pi[z.b[j]];
+ 324              		.loc 1 104 17 view .LVU103
+ 104:.././crypto/kuznyechik/gost.c ****       z.b[j] = kuz_pi[z.b[j]];
+ 325              		.loc 1 104 5 is_stmt 0 view .LVU104
+ 326 00c2 F6D1     		bne	.L20
+ 106:.././crypto/kuznyechik/gost.c ****     z.q[0] ^= y.q[0];
+ 327              		.loc 1 106 5 is_stmt 1 view .LVU105
+ 328 00c4 FFF7FEFF 		bl	kuz_l
+ 329              	.LVL25:
+ 107:.././crypto/kuznyechik/gost.c ****     z.q[1] ^= y.q[1];
+ 330              		.loc 1 107 5 view .LVU106
+ 107:.././crypto/kuznyechik/gost.c ****     z.q[1] ^= y.q[1];
+ 331              		.loc 1 107 12 is_stmt 0 view .LVU107
+ 332 00c8 0C9A     		ldr	r2, [sp, #48]
+ 333 00ca 089B     		ldr	r3, [sp, #32]
+ 334 00cc 82EA0301 		eor	r1, r2, r3
+ 335 00d0 0D9A     		ldr	r2, [sp, #52]
+ 336 00d2 099B     		ldr	r3, [sp, #36]
+ 337 00d4 82EA030C 		eor	ip, r2, r3
+ 108:.././crypto/kuznyechik/gost.c ****  
+ 338              		.loc 1 108 12 view .LVU108
+ 339 00d8 0E9A     		ldr	r2, [sp, #56]
+ 340 00da 0A9B     		ldr	r3, [sp, #40]
+ 341 00dc 82EA030E 		eor	lr, r2, r3
+ 342 00e0 0F9B     		ldr	r3, [sp, #60]
+ 343 00e2 0B9A     		ldr	r2, [sp, #44]
+ 344 00e4 5A40     		eors	r2, r2, r3
+ 116:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2)].q[0] = x.q[0];
+ 345              		.loc 1 116 8 view .LVU109
+ 346 00e6 6307     		lsls	r3, r4, #29
+ 107:.././crypto/kuznyechik/gost.c ****     z.q[1] ^= y.q[1];
+ 347              		.loc 1 107 12 view .LVU110
+ 348 00e8 CDE90C1C 		strd	r1, ip, [sp, #48]
+ 108:.././crypto/kuznyechik/gost.c ****  
+ 349              		.loc 1 108 5 is_stmt 1 view .LVU111
+ 108:.././crypto/kuznyechik/gost.c ****  
+ 350              		.loc 1 108 12 is_stmt 0 view .LVU112
+ 351 00ec CDE90EE2 		strd	lr, r2, [sp, #56]
+ 110:.././crypto/kuznyechik/gost.c ****     y.q[1] = x.q[1];
+ 352              		.loc 1 110 5 is_stmt 1 view .LVU113
+ 110:.././crypto/kuznyechik/gost.c ****     y.q[1] = x.q[1];
+ 353              		.loc 1 110 12 is_stmt 0 view .LVU114
+ 354 00f0 CDE90898 		strd	r9, r8, [sp, #32]
+ 111:.././crypto/kuznyechik/gost.c **** 
+ 355              		.loc 1 111 5 is_stmt 1 view .LVU115
+ 111:.././crypto/kuznyechik/gost.c **** 
+ 356              		.loc 1 111 12 is_stmt 0 view .LVU116
+ 357 00f4 CDE90A76 		strd	r7, r6, [sp, #40]
+ 113:.././crypto/kuznyechik/gost.c ****     x.q[1] = z.q[1];
+ 358              		.loc 1 113 5 is_stmt 1 view .LVU117
+ 113:.././crypto/kuznyechik/gost.c ****     x.q[1] = z.q[1];
+ 359              		.loc 1 113 12 is_stmt 0 view .LVU118
+ 360 00f8 CDE9041C 		strd	r1, ip, [sp, #16]
+ 114:.././crypto/kuznyechik/gost.c **** 
+ 361              		.loc 1 114 5 is_stmt 1 view .LVU119
+ 114:.././crypto/kuznyechik/gost.c **** 
+ 362              		.loc 1 114 12 is_stmt 0 view .LVU120
+ 363 00fc CDE906E2 		strd	lr, r2, [sp, #24]
+ 116:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2)].q[0] = x.q[0];
+ 364              		.loc 1 116 5 is_stmt 1 view .LVU121
+ 116:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2)].q[0] = x.q[0];
+ 365              		.loc 1 116 8 is_stmt 0 view .LVU122
+ 366 0100 0DD1     		bne	.L21
+ 117:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2)].q[1] = x.q[1];
+ 367              		.loc 1 117 7 is_stmt 1 view .LVU123
+ 117:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2)].q[1] = x.q[1];
+ 368              		.loc 1 117 23 is_stmt 0 view .LVU124
+ 369 0102 A010     		asrs	r0, r4, #2
+ 117:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2)].q[1] = x.q[1];
+ 370              		.loc 1 117 35 view .LVU125
+ 371 0104 05EB0013 		add	r3, r5, r0, lsl #4
+ 119:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2) + 1].q[1] = y.q[1];
+ 372              		.loc 1 119 29 view .LVU126
+ 373 0108 0130     		adds	r0, r0, #1
+ 119:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2) + 1].q[1] = y.q[1];
+ 374              		.loc 1 119 39 view .LVU127
+ 375 010a 05EB0010 		add	r0, r5, r0, lsl #4
+ 117:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2)].q[1] = x.q[1];
+ 376              		.loc 1 117 35 view .LVU128
+ 377 010e C3E9081C 		strd	r1, ip, [r3, #32]
+ 118:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2) + 1].q[0] = y.q[0];
+ 378              		.loc 1 118 7 is_stmt 1 view .LVU129
+ 118:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2) + 1].q[0] = y.q[0];
+ 379              		.loc 1 118 35 is_stmt 0 view .LVU130
+ 380 0112 C3E90AE2 		strd	lr, r2, [r3, #40]
+ 119:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2) + 1].q[1] = y.q[1];
+ 381              		.loc 1 119 7 is_stmt 1 view .LVU131
+ 119:.././crypto/kuznyechik/gost.c ****       round_keys.k[(i >> 2) + 1].q[1] = y.q[1];
+ 382              		.loc 1 119 39 is_stmt 0 view .LVU132
+ 383 0116 C0E90898 		strd	r9, r8, [r0, #32]
+ 120:.././crypto/kuznyechik/gost.c ****     }
+ 384              		.loc 1 120 7 is_stmt 1 view .LVU133
+ 120:.././crypto/kuznyechik/gost.c ****     }
+ 385              		.loc 1 120 39 is_stmt 0 view .LVU134
+ 386 011a C0E90A76 		strd	r7, r6, [r0, #40]
+ 387              	.L21:
+  95:.././crypto/kuznyechik/gost.c ****     // C Value
+ 388              		.loc 1 95 24 is_stmt 1 view .LVU135
+  95:.././crypto/kuznyechik/gost.c ****     // C Value
+ 389              		.loc 1 95 25 is_stmt 0 view .LVU136
+ 390 011e 0134     		adds	r4, r4, #1
+ 391              	.LVL26:
+  95:.././crypto/kuznyechik/gost.c ****     // C Value
+ 392              		.loc 1 95 15 is_stmt 1 view .LVU137
+  95:.././crypto/kuznyechik/gost.c ****     // C Value
+ 393              		.loc 1 95 3 is_stmt 0 view .LVU138
+ 394 0120 212C     		cmp	r4, #33
+ 395 0122 A7D1     		bne	.L22
+ 396              	.LBE18:
+ 397              	.LBE17:
+ 148:.././crypto/kuznyechik/gost.c ****   kuz_set_round_keys();
+ 149:.././crypto/kuznyechik/gost.c **** }
+ 398              		.loc 1 149 1 view .LVU139
+ 399 0124 11B0     		add	sp, sp, #68
+ 400              	.LCFI3:
+ 401              		.cfi_def_cfa_offset 36
+ 402              		@ sp needed
+ 403 0126 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 404              	.LVL27:
+ 405              	.L29:
+ 406              		.loc 1 149 1 view .LVU140
+ 407 012a 00BF     		.align	2
+ 408              	.L28:
+ 409 012c 00000000 		.word	.LANCHOR1
+ 410 0130 10000000 		.word	.LANCHOR1+16
+ 411 0134 00000000 		.word	.LANCHOR0
+ 412              		.cfi_endproc
+ 413              	.LFE4:
+ 415              		.section	.text.GOST_ECB_indp_crypto,"ax",%progbits
+ 416              		.align	1
+ 417              		.global	GOST_ECB_indp_crypto
+ 418              		.syntax unified
+ 419              		.thumb
+ 420              		.thumb_func
+ 421              		.fpu softvfp
+ 423              	GOST_ECB_indp_crypto:
+ 424              	.LVL28:
+ 425              	.LFB5:
+ 150:.././crypto/kuznyechik/gost.c **** 
+ 151:.././crypto/kuznyechik/gost.c **** void GOST_ECB_indp_crypto(uint8_t* input) {
+ 426              		.loc 1 151 43 is_stmt 1 view -0
+ 427              		.cfi_startproc
+ 428              		@ args = 0, pretend = 0, frame = 16
+ 429              		@ frame_needed = 0, uses_anonymous_args = 0
+ 152:.././crypto/kuznyechik/gost.c ****   // The next function call encrypts the PlainText with the Key using GOST algorithm.
+ 153:.././crypto/kuznyechik/gost.c ****   kuz_encrypt_block(input);
+ 430              		.loc 1 153 3 view .LVU142
+ 431              	.LBB21:
+ 432              	.LBI21:
+ 126:.././crypto/kuznyechik/gost.c ****   int i, j;
+ 433              		.loc 1 126 13 view .LVU143
+ 434              	.LBB22:
+ 127:.././crypto/kuznyechik/gost.c ****   w128_t x;
+ 435              		.loc 1 127 3 view .LVU144
+ 128:.././crypto/kuznyechik/gost.c **** 
+ 436              		.loc 1 128 3 view .LVU145
+ 130:.././crypto/kuznyechik/gost.c ****   x.q[1] = ((uint64_t *) blk)[1];
+ 437              		.loc 1 130 3 view .LVU146
+ 438              	.LBE22:
+ 439              	.LBE21:
+ 151:.././crypto/kuznyechik/gost.c ****   // The next function call encrypts the PlainText with the Key using GOST algorithm.
+ 440              		.loc 1 151 43 is_stmt 0 view .LVU147
+ 441 0000 F0B5     		push	{r4, r5, r6, r7, lr}
+ 442              	.LCFI4:
+ 443              		.cfi_def_cfa_offset 20
+ 444              		.cfi_offset 4, -20
+ 445              		.cfi_offset 5, -16
+ 446              		.cfi_offset 6, -12
+ 447              		.cfi_offset 7, -8
+ 448              		.cfi_offset 14, -4
+ 449              	.LBB26:
+ 450              	.LBB23:
+ 130:.././crypto/kuznyechik/gost.c ****   x.q[1] = ((uint64_t *) blk)[1];
+ 451              		.loc 1 130 10 view .LVU148
+ 452 0002 D0E90023 		ldrd	r2, [r0]
+ 453              	.LBE23:
+ 454              	.LBE26:
+ 151:.././crypto/kuznyechik/gost.c ****   // The next function call encrypts the PlainText with the Key using GOST algorithm.
+ 455              		.loc 1 151 43 view .LVU149
+ 456 0006 85B0     		sub	sp, sp, #20
+ 457              	.LCFI5:
+ 458              		.cfi_def_cfa_offset 40
+ 459              	.LBB27:
+ 460              	.LBB24:
+ 130:.././crypto/kuznyechik/gost.c ****   x.q[1] = ((uint64_t *) blk)[1];
+ 461              		.loc 1 130 10 view .LVU150
+ 462 0008 CDE90023 		strd	r2, [sp]
+ 131:.././crypto/kuznyechik/gost.c **** 
+ 463              		.loc 1 131 3 is_stmt 1 view .LVU151
+ 131:.././crypto/kuznyechik/gost.c **** 
+ 464              		.loc 1 131 10 is_stmt 0 view .LVU152
+ 465 000c D0E90223 		ldrd	r2, [r0, #8]
+ 466 0010 CDE90223 		strd	r2, [sp, #8]
+ 133:.././crypto/kuznyechik/gost.c ****     x.q[0] ^= round_keys.k[i].q[0];
+ 467              		.loc 1 133 3 is_stmt 1 view .LVU153
+ 468              	.LVL29:
+ 133:.././crypto/kuznyechik/gost.c ****     x.q[0] ^= round_keys.k[i].q[0];
+ 469              		.loc 1 133 15 view .LVU154
+ 470 0014 1B4D     		ldr	r5, .L35
+ 138:.././crypto/kuznyechik/gost.c ****     kuz_l(&x);
+ 471              		.loc 1 138 22 is_stmt 0 view .LVU155
+ 472 0016 1C4F     		ldr	r7, .L35+4
+ 473              	.LBE24:
+ 474              	.LBE27:
+ 151:.././crypto/kuznyechik/gost.c ****   // The next function call encrypts the PlainText with the Key using GOST algorithm.
+ 475              		.loc 1 151 43 view .LVU156
+ 476 0018 0446     		mov	r4, r0
+ 477              	.LBB28:
+ 478              	.LBB25:
+ 133:.././crypto/kuznyechik/gost.c ****     x.q[0] ^= round_keys.k[i].q[0];
+ 479              		.loc 1 133 10 view .LVU157
+ 480 001a 0026     		movs	r6, #0
+ 481              	.LVL30:
+ 482              	.L32:
+ 134:.././crypto/kuznyechik/gost.c ****     x.q[1] ^= round_keys.k[i].q[1];
+ 483              		.loc 1 134 5 is_stmt 1 view .LVU158
+ 134:.././crypto/kuznyechik/gost.c ****     x.q[1] ^= round_keys.k[i].q[1];
+ 484              		.loc 1 134 12 is_stmt 0 view .LVU159
+ 485 001c D5E90031 		ldrd	r3, r1, [r5]
+ 486 0020 009A     		ldr	r2, [sp]
+ 487 0022 5A40     		eors	r2, r2, r3
+ 488 0024 019B     		ldr	r3, [sp, #4]
+ 489 0026 4B40     		eors	r3, r3, r1
+ 490 0028 CDE90023 		strd	r2, r3, [sp]
+ 135:.././crypto/kuznyechik/gost.c **** 
+ 491              		.loc 1 135 5 is_stmt 1 view .LVU160
+ 135:.././crypto/kuznyechik/gost.c **** 
+ 492              		.loc 1 135 12 is_stmt 0 view .LVU161
+ 493 002c D5E90231 		ldrd	r3, r1, [r5, #8]
+ 494 0030 029A     		ldr	r2, [sp, #8]
+ 495 0032 5A40     		eors	r2, r2, r3
+ 496 0034 039B     		ldr	r3, [sp, #12]
+ 497 0036 4B40     		eors	r3, r3, r1
+ 498 0038 CDE90223 		strd	r2, r3, [sp, #8]
+ 137:.././crypto/kuznyechik/gost.c ****       x.b[j] = kuz_pi[x.b[j]];
+ 499              		.loc 1 137 5 is_stmt 1 view .LVU162
+ 500              	.LVL31:
+ 137:.././crypto/kuznyechik/gost.c ****       x.b[j] = kuz_pi[x.b[j]];
+ 501              		.loc 1 137 17 view .LVU163
+ 502 003c 6B46     		mov	r3, sp
+ 135:.././crypto/kuznyechik/gost.c **** 
+ 503              		.loc 1 135 12 is_stmt 0 view .LVU164
+ 504 003e 1022     		movs	r2, #16
+ 505 0040 1846     		mov	r0, r3
+ 506              	.LVL32:
+ 507              	.L31:
+ 138:.././crypto/kuznyechik/gost.c ****     kuz_l(&x);
+ 508              		.loc 1 138 7 is_stmt 1 view .LVU165
+ 138:.././crypto/kuznyechik/gost.c ****     kuz_l(&x);
+ 509              		.loc 1 138 26 is_stmt 0 view .LVU166
+ 510 0042 1978     		ldrb	r1, [r3]	@ zero_extendqisi2
+ 138:.././crypto/kuznyechik/gost.c ****     kuz_l(&x);
+ 511              		.loc 1 138 22 view .LVU167
+ 512 0044 3944     		add	r1, r1, r7
+ 137:.././crypto/kuznyechik/gost.c ****       x.b[j] = kuz_pi[x.b[j]];
+ 513              		.loc 1 137 5 view .LVU168
+ 514 0046 013A     		subs	r2, r2, #1
+ 138:.././crypto/kuznyechik/gost.c ****     kuz_l(&x);
+ 515              		.loc 1 138 14 view .LVU169
+ 516 0048 097C     		ldrb	r1, [r1, #16]	@ zero_extendqisi2
+ 517 004a 03F8011B 		strb	r1, [r3], #1
+ 518              	.LVL33:
+ 137:.././crypto/kuznyechik/gost.c ****       x.b[j] = kuz_pi[x.b[j]];
+ 519              		.loc 1 137 25 is_stmt 1 view .LVU170
+ 137:.././crypto/kuznyechik/gost.c ****       x.b[j] = kuz_pi[x.b[j]];
+ 520              		.loc 1 137 17 view .LVU171
+ 137:.././crypto/kuznyechik/gost.c ****       x.b[j] = kuz_pi[x.b[j]];
+ 521              		.loc 1 137 5 is_stmt 0 view .LVU172
+ 522 004e F8D1     		bne	.L31
+ 139:.././crypto/kuznyechik/gost.c ****   }
+ 523              		.loc 1 139 5 is_stmt 1 view .LVU173
+ 133:.././crypto/kuznyechik/gost.c ****     x.q[0] ^= round_keys.k[i].q[0];
+ 524              		.loc 1 133 23 is_stmt 0 view .LVU174
+ 525 0050 0136     		adds	r6, r6, #1
+ 526              	.LVL34:
+ 139:.././crypto/kuznyechik/gost.c ****   }
+ 527              		.loc 1 139 5 view .LVU175
+ 528 0052 FFF7FEFF 		bl	kuz_l
+ 529              	.LVL35:
+ 133:.././crypto/kuznyechik/gost.c ****     x.q[0] ^= round_keys.k[i].q[0];
+ 530              		.loc 1 133 22 is_stmt 1 view .LVU176
+ 133:.././crypto/kuznyechik/gost.c ****     x.q[0] ^= round_keys.k[i].q[0];
+ 531              		.loc 1 133 15 view .LVU177
+ 133:.././crypto/kuznyechik/gost.c ****     x.q[0] ^= round_keys.k[i].q[0];
+ 532              		.loc 1 133 3 is_stmt 0 view .LVU178
+ 533 0056 092E     		cmp	r6, #9
+ 534 0058 05F11005 		add	r5, r5, #16
+ 535 005c DED1     		bne	.L32
+ 141:.././crypto/kuznyechik/gost.c ****   ((uint64_t *) blk)[1] = x.q[1] ^ round_keys.k[9].q[1];
+ 536              		.loc 1 141 3 is_stmt 1 view .LVU179
+ 141:.././crypto/kuznyechik/gost.c ****   ((uint64_t *) blk)[1] = x.q[1] ^ round_keys.k[9].q[1];
+ 537              		.loc 1 141 53 is_stmt 0 view .LVU180
+ 538 005e 0B4B     		ldr	r3, .L35+8
+ 141:.././crypto/kuznyechik/gost.c ****   ((uint64_t *) blk)[1] = x.q[1] ^ round_keys.k[9].q[1];
+ 539              		.loc 1 141 34 view .LVU181
+ 540 0060 0099     		ldr	r1, [sp]
+ 541 0062 D3E92C20 		ldrd	r2, r0, [r3, #176]
+ 542 0066 5140     		eors	r1, r1, r2
+ 543 0068 019A     		ldr	r2, [sp, #4]
+ 544 006a 4240     		eors	r2, r2, r0
+ 141:.././crypto/kuznyechik/gost.c ****   ((uint64_t *) blk)[1] = x.q[1] ^ round_keys.k[9].q[1];
+ 545              		.loc 1 141 25 view .LVU182
+ 546 006c C4E90012 		strd	r1, r2, [r4]
+ 142:.././crypto/kuznyechik/gost.c **** }
+ 547              		.loc 1 142 3 is_stmt 1 view .LVU183
+ 142:.././crypto/kuznyechik/gost.c **** }
+ 548              		.loc 1 142 34 is_stmt 0 view .LVU184
+ 549 0070 D3E92E01 		ldrd	r0, r1, [r3, #184]
+ 550 0074 029A     		ldr	r2, [sp, #8]
+ 551 0076 039B     		ldr	r3, [sp, #12]
+ 552 0078 4240     		eors	r2, r2, r0
+ 553 007a 4B40     		eors	r3, r3, r1
+ 142:.././crypto/kuznyechik/gost.c **** }
+ 554              		.loc 1 142 25 view .LVU185
+ 555 007c C4E90223 		strd	r2, r3, [r4, #8]
+ 556              	.LVL36:
+ 142:.././crypto/kuznyechik/gost.c **** }
+ 557              		.loc 1 142 25 view .LVU186
+ 558              	.LBE25:
+ 559              	.LBE28:
+ 154:.././crypto/kuznyechik/gost.c **** }
+ 560              		.loc 1 154 1 view .LVU187
+ 561 0080 05B0     		add	sp, sp, #20
+ 562              	.LCFI6:
+ 563              		.cfi_def_cfa_offset 20
+ 564              		@ sp needed
+ 565 0082 F0BD     		pop	{r4, r5, r6, r7, pc}
+ 566              	.LVL37:
+ 567              	.L36:
+ 568              		.loc 1 154 1 view .LVU188
+ 569              		.align	2
+ 570              	.L35:
+ 571 0084 20000000 		.word	.LANCHOR1+32
+ 572 0088 00000000 		.word	.LANCHOR0
+ 573 008c 00000000 		.word	.LANCHOR1
+ 574              		.cfi_endproc
+ 575              	.LFE5:
+ 577              		.section	.rodata
+ 578              		.set	.LANCHOR0,. + 0
+ 581              	kuz_lvec:
+ 582 0000 94208510 		.ascii	"\224 \205\020\302\300\001\373\001\300\302\020\205 \224"
+ 582      C2C001FB 
+ 582      01C0C210 
+ 582      852094
+ 583 000f 01       		.ascii	"\001"
+ 586              	kuz_pi:
+ 587 0010 FCEEDD11 		.ascii	"\374\356\335\021\317n1\026\373\304\372\332#\305\004"
+ 587      CF6E3116 
+ 587      FBC4FADA 
+ 587      23C504
+ 588 001f 4DE977F0 		.ascii	"M\351w\360\333\223.\231\272\0276\361\273\024\315_\301"
+ 588      DB932E99 
+ 588      BA1736F1 
+ 588      BB14CD5F 
+ 588      C1
+ 589 0030 F918655A 		.ascii	"\371\030eZ\342\\\357!\201\034<B\213\001\216O\005\204"
+ 589      E25CEF21 
+ 589      811C3C42 
+ 589      8B018E4F 
+ 589      0584
+ 590 0042 02AEE36A 		.ascii	"\002\256\343j\217\240\006\013\355\230\177\324\323\037"
+ 590      8FA0060B 
+ 590      ED987FD4 
+ 590      D31F
+ 591 0050 EB342C51 		.ascii	"\3534,Q\352\310H\253\362*h\242\375:\316\314\265p\016"
+ 591      EAC848AB 
+ 591      F22A68A2 
+ 591      FD3ACECC 
+ 591      B5700E
+ 592 0063 56080C76 		.ascii	"V\010\014v\022\277r\023G\234\267]\207\025\241\226)\020"
+ 592      12BF7213 
+ 592      479CB75D 
+ 592      8715A196 
+ 592      2910
+ 593 0075 7B9AC7F3 		.ascii	"{\232\307\363\221xo\235\236\262\2612u\031=\3775\212"
+ 593      91786F9D 
+ 593      9EB2B132 
+ 593      75193DFF 
+ 593      358A
+ 594 0087 7E6D54C6 		.ascii	"~mT\306\200\303\275\015W\337\365$\251>\250C\311\327"
+ 594      80C3BD0D 
+ 594      57DFF524 
+ 594      A93EA843 
+ 594      C9D7
+ 595 0099 79D6F67C 		.ascii	"y\326\366|\"\271\003\340\017\354\336z\224\260\274\334"
+ 595      22B903E0 
+ 595      0FECDE7A 
+ 595      94B0BCDC 
+ 596 00a9 E828504E 		.ascii	"\350(PN3\012J\247\227`s\036\000bD\032\2708\202d\237"
+ 596      330A4AA7 
+ 596      9760731E 
+ 596      0062441A 
+ 596      B8388264 
+ 597 00be 2641AD45 		.ascii	"&A\255EF\222'^U/\214\243\245}i\325\225;\007X\263@\206"
+ 597      4692275E 
+ 597      552F8CA3 
+ 597      A57D69D5 
+ 597      953B0758 
+ 598 00d5 AC1DF730 		.ascii	"\254\035\36707k\344\210\331\347\211\341\033\203IL?\370"
+ 598      376BE488 
+ 598      D9E789E1 
+ 598      1B83494C 
+ 598      3FF8
+ 599 00e7 FE8D53AA 		.ascii	"\376\215S\252\220\312\330\205a qg\244-+\011[\313\233"
+ 599      90CAD885 
+ 599      61207167 
+ 599      A42D2B09 
+ 599      5BCB9B
+ 600 00fa 25D0BEE5 		.ascii	"%\320\276\345lRY\246t\322\346\364\264\300\321f\257\302"
+ 600      6C5259A6 
+ 600      74D2E6F4 
+ 600      B4C0D166 
+ 600      AFC2
+ 601 010c 394B63B6 		.ascii	"9Kc\266"
+ 602              		.bss
+ 603              		.align	3
+ 604              		.set	.LANCHOR1,. + 0
+ 607              	Key:
+ 608 0000 00000000 		.space	32
+ 608      00000000 
+ 608      00000000 
+ 608      00000000 
+ 608      00000000 
+ 611              	round_keys:
+ 612 0020 00000000 		.space	160
+ 612      00000000 
+ 612      00000000 
+ 612      00000000 
+ 612      00000000 
+ 613              		.text
+ 614              	.Letext0:
+ 615              		.file 2 "c:\\users\\vadim\\chipwh~1\\cw\\home\\portable\\armgcc\\arm-none-eabi\\include\\machine\\
+ 616              		.file 3 "c:\\users\\vadim\\chipwh~1\\cw\\home\\portable\\armgcc\\arm-none-eabi\\include\\sys\\_std
+ 617              		.file 4 ".././crypto/kuznyechik/gost.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 gost.c
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:16     .text.kuz_l:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:23     .text.kuz_l:00000000 kuz_l
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:152    .text.kuz_l:00000054 $d
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:157    .text.GOST_ECB_indp_setkey:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:164    .text.GOST_ECB_indp_setkey:00000000 GOST_ECB_indp_setkey
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:409    .text.GOST_ECB_indp_setkey:0000012c $d
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:416    .text.GOST_ECB_indp_crypto:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:423    .text.GOST_ECB_indp_crypto:00000000 GOST_ECB_indp_crypto
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:571    .text.GOST_ECB_indp_crypto:00000084 $d
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:581    .rodata:00000000 kuz_lvec
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:586    .rodata:00000010 kuz_pi
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:603    .bss:00000000 $d
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:607    .bss:00000000 Key
+C:\Users\Vadim\AppData\Local\Temp\cckRIjAo.s:611    .bss:00000020 round_keys
+
+NO UNDEFINED SYMBOLS

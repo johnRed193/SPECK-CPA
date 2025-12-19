@@ -1,0 +1,445 @@
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 4
+   9              		.eabi_attribute 34, 1
+  10              		.eabi_attribute 18, 4
+  11              		.file	"gost-independant.c"
+  12              		.text
+  13              	.Ltext0:
+  14              		.cfi_sections	.debug_frame
+  15              		.section	.text.change_ok_led,"ax",%progbits
+  16              		.align	1
+  17              		.weak	change_ok_led
+  18              		.arch armv7e-m
+  19              		.syntax unified
+  20              		.thumb
+  21              		.thumb_func
+  22              		.fpu softvfp
+  24              	change_ok_led:
+  25              	.LFB11:
+  26              		.cfi_startproc
+  27              		@ args = 0, pretend = 0, frame = 0
+  28              		@ frame_needed = 0, uses_anonymous_args = 0
+  29              		@ link register save eliminated.
+  30 0000 7047     		bx	lr
+  31              		.cfi_endproc
+  32              	.LFE11:
+  34              		.section	.text.change_err_led,"ax",%progbits
+  35              		.align	1
+  36              		.weak	change_err_led
+  37              		.syntax unified
+  38              		.thumb
+  39              		.thumb_func
+  40              		.fpu softvfp
+  42              	change_err_led:
+  43              	.LVL0:
+  44              	.LFB1:
+  45              		.file 1 ".././hal/hal.h"
+   1:.././hal/hal.h **** /*
+   2:.././hal/hal.h ****     This file is part of the ChipWhisperer Example Targets
+   3:.././hal/hal.h ****     Copyright (C) 2012-2015 NewAE Technology Inc.
+   4:.././hal/hal.h **** 
+   5:.././hal/hal.h ****     This program is free software: you can redistribute it and/or modify
+   6:.././hal/hal.h ****     it under the terms of the GNU General Public License as published by
+   7:.././hal/hal.h ****     the Free Software Foundation, either version 3 of the License, or
+   8:.././hal/hal.h ****     (at your option) any later version.
+   9:.././hal/hal.h **** 
+  10:.././hal/hal.h ****     This program is distributed in the hope that it will be useful,
+  11:.././hal/hal.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  12:.././hal/hal.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  13:.././hal/hal.h ****     GNU General Public License for more details.
+  14:.././hal/hal.h **** 
+  15:.././hal/hal.h ****     You should have received a copy of the GNU General Public License
+  16:.././hal/hal.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  17:.././hal/hal.h **** */
+  18:.././hal/hal.h **** 
+  19:.././hal/hal.h **** #ifndef HAL_H_
+  20:.././hal/hal.h **** #define HAL_H_
+  21:.././hal/hal.h **** 
+  22:.././hal/hal.h **** #include <stdint.h>
+  23:.././hal/hal.h **** 
+  24:.././hal/hal.h **** void platform_init(void);
+  25:.././hal/hal.h **** 
+  26:.././hal/hal.h **** //PLATFORM Define Types
+  27:.././hal/hal.h **** #define CW301_AVR      1
+  28:.././hal/hal.h **** #define CW301_XMEGA    2
+  29:.././hal/hal.h **** #define CW303          3
+  30:.././hal/hal.h **** #define CW304          4
+  31:.././hal/hal.h **** #define CW308_MEGARF   8
+  32:.././hal/hal.h **** #define CW308_PIC24FJ  10
+  33:.././hal/hal.h **** #define CW308_SAM4L    11
+  34:.././hal/hal.h **** #define CW308_SI4010   12
+  35:.././hal/hal.h **** #define CW308_MPC5748G 13
+  36:.././hal/hal.h **** #define CW308_STM32F0  14
+  37:.././hal/hal.h **** #define CW308_STM32F1  15
+  38:.././hal/hal.h **** #define CW308_STM32F2  16
+  39:.././hal/hal.h **** #define CW308_STM32F3  17
+  40:.././hal/hal.h **** #define CW308_STM32F4  18
+  41:.././hal/hal.h **** #define CW308_CC2538   19
+  42:.././hal/hal.h **** #define CW308_K24F     20
+  43:.././hal/hal.h **** #define CW308_NRF52840 21
+  44:.././hal/hal.h **** #define CW308_AURIX    22
+  45:.././hal/hal.h **** #define CW308_SAML11   23
+  46:.././hal/hal.h **** #define CW308_EFM32TG11B 24
+  47:.././hal/hal.h **** #define CW308_K82F     25
+  48:.././hal/hal.h **** #define CW308_LPC55S6X 26
+  49:.././hal/hal.h **** #define CW308_PSOC62   27
+  50:.././hal/hal.h **** #define CW308_IMXRT1062 28
+  51:.././hal/hal.h **** #define CW308_FE310    29
+  52:.././hal/hal.h **** #define CW308_EFR32MG21A  30
+  53:.././hal/hal.h **** #define CW308_EFM32GG11  31
+  54:.././hal/hal.h **** #define CW308_STM32L5  32
+  55:.././hal/hal.h **** #define CW308_STM32L4  33
+  56:.././hal/hal.h **** #define CW308_RX65N  34
+  57:.././hal/hal.h **** #define CW308_MPC5676R 35
+  58:.././hal/hal.h **** #define CW308_NEORV32  36
+  59:.././hal/hal.h **** #define CW305_IBEX  37
+  60:.././hal/hal.h **** 
+  61:.././hal/hal.h **** //HAL_TYPE Define Types
+  62:.././hal/hal.h **** #define HAL_avr      1
+  63:.././hal/hal.h **** #define HAL_xmega    2
+  64:.././hal/hal.h **** #define HAL_pic24f   3
+  65:.././hal/hal.h **** #define HAL_sam4l    4
+  66:.././hal/hal.h **** #define HAL_stm32f0  5
+  67:.././hal/hal.h **** #define HAL_stm32f1  6
+  68:.././hal/hal.h **** #define HAL_stm32f2  7
+  69:.././hal/hal.h **** #define HAL_stm32f3  8
+  70:.././hal/hal.h **** #define HAL_stm32f4  9
+  71:.././hal/hal.h **** #define HAL_cc2538   10
+  72:.././hal/hal.h **** #define HAL_k24f     11
+  73:.././hal/hal.h **** #define HAL_nrf52840 12
+  74:.././hal/hal.h **** #define HAL_stm32f0_nano 13
+  75:.././hal/hal.h **** #define HAL_aurix    14
+  76:.././hal/hal.h **** #define HAL_saml11   15
+  77:.././hal/hal.h **** #define HAL_efm32tg11b 16
+  78:.././hal/hal.h **** #define HAL_k82f     17
+  79:.././hal/hal.h **** #define HAL_lpc55s6x 18
+  80:.././hal/hal.h **** #define HAL_psoc62   19
+  81:.././hal/hal.h **** #define HAL_imxrt1062 20
+  82:.././hal/hal.h **** #define HAL_fe310    21
+  83:.././hal/hal.h **** #define HAL_efr32mg21a 22
+  84:.././hal/hal.h **** #define HAL_efm32gg11 23
+  85:.././hal/hal.h **** #define HAL_stm32l5 24
+  86:.././hal/hal.h **** #define HAL_stm32l4 25
+  87:.././hal/hal.h **** #define HAL_rx65n 26
+  88:.././hal/hal.h **** #define HAL_mpc5676r 27
+  89:.././hal/hal.h **** #define HAL_neorv32  28
+  90:.././hal/hal.h **** #define HAL_sam4s  29
+  91:.././hal/hal.h **** #define HAL_ibex  30
+  92:.././hal/hal.h **** 
+  93:.././hal/hal.h **** #if HAL_TYPE == HAL_avr
+  94:.././hal/hal.h ****     #include <avr/io.h>
+  95:.././hal/hal.h ****     #include <util/delay.h>
+  96:.././hal/hal.h ****     #include "avr/avr_hal.h"
+  97:.././hal/hal.h **** #elif HAL_TYPE == HAL_xmega
+  98:.././hal/hal.h ****     #include <avr/io.h>
+  99:.././hal/hal.h ****     #include <util/delay.h>
+ 100:.././hal/hal.h ****     #include "xmega/xmega_hal.h"
+ 101:.././hal/hal.h ****     #include "xmega/avr_compiler.h"
+ 102:.././hal/hal.h **** #elif HAL_TYPE == HAL_pic24f
+ 103:.././hal/hal.h ****     #include <xc.h>
+ 104:.././hal/hal.h ****     #include "pic24f/pic24f_hal.h"
+ 105:.././hal/hal.h ****     #include "pic24f/uart.h"
+ 106:.././hal/hal.h **** #elif HAL_TYPE == HAL_sam4l
+ 107:.././hal/hal.h ****     #include "sam4l/sam4l_hal.h"
+ 108:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f0
+ 109:.././hal/hal.h **** 	#include "stm32f0/stm32f0_hal.h"
+ 110:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f1
+ 111:.././hal/hal.h **** 	#include "stm32f1/stm32f1_hal.h"
+ 112:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f2
+ 113:.././hal/hal.h **** 	#include "stm32f2/stm32f2_hal.h"
+ 114:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f3
+ 115:.././hal/hal.h **** 	#include "stm32f3/stm32f3_hal.h"
+ 116:.././hal/hal.h **** 	#ifdef SECCAN
+ 117:.././hal/hal.h **** 		#include "stm32f3/stm32f3_hal_seccan.h"
+ 118:.././hal/hal.h **** 	#endif
+ 119:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f4
+ 120:.././hal/hal.h **** 	#include "stm32f4/stm32f4_hal.h"
+ 121:.././hal/hal.h **** #elif HAL_TYPE == HAL_cc2538
+ 122:.././hal/hal.h **** 	#include "cc2538/cc2538_hal.h"
+ 123:.././hal/hal.h **** #elif HAL_TYPE == HAL_k24f
+ 124:.././hal/hal.h ****     #include "k24f/k24f_hal.h"
+ 125:.././hal/hal.h **** #elif HAL_TYPE == HAL_k82f
+ 126:.././hal/hal.h **** #include "k82f/k82f_hal.h"
+ 127:.././hal/hal.h **** #elif HAL_TYPE == HAL_nrf52840
+ 128:.././hal/hal.h ****     #include "nrf52840/nrf52840_hal.h"   
+ 129:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32f0_nano
+ 130:.././hal/hal.h ****     #include "stm32f0/stm32f0_hal.h" 
+ 131:.././hal/hal.h ****     void led_error(unsigned int status);
+ 132:.././hal/hal.h ****     void led_ok(unsigned int status);
+ 133:.././hal/hal.h **** #elif HAL_TYPE == HAL_aurix
+ 134:.././hal/hal.h ****     #include "aurix/aurix_hal.h"
+ 135:.././hal/hal.h **** #elif HAL_TYPE == HAL_saml11
+ 136:.././hal/hal.h ****      #include "saml11/saml11_hal.h"
+ 137:.././hal/hal.h **** #elif HAL_TYPE == HAL_efm32tg11b
+ 138:.././hal/hal.h ****      #include "efm32tg11b/efm32tg11b_hal.h"
+ 139:.././hal/hal.h **** #elif HAL_TYPE == HAL_lpc55s6x
+ 140:.././hal/hal.h ****      #include "lpc55s6x/lpc55s6x_hal.h"
+ 141:.././hal/hal.h **** #elif HAL_TYPE == HAL_psoc62
+ 142:.././hal/hal.h ****     #include "psoc62/psoc62_hal.h"
+ 143:.././hal/hal.h **** #elif HAL_TYPE == HAL_imxrt1062
+ 144:.././hal/hal.h ****     #include "imxrt1062/imxrt1062_hal.h"
+ 145:.././hal/hal.h **** #elif HAL_TYPE == HAL_fe310
+ 146:.././hal/hal.h ****     #include "fe310/fe310_hal.h"
+ 147:.././hal/hal.h **** #elif HAL_TYPE == HAL_efr32mg21a
+ 148:.././hal/hal.h ****     #include "efr32mg21a/efr32mg21a_hal.h"
+ 149:.././hal/hal.h **** #elif HAL_TYPE == HAL_efm32gg11
+ 150:.././hal/hal.h ****     #include "efm32gg11/efm32gg11_hal.h"
+ 151:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32l5
+ 152:.././hal/hal.h ****     #include "stm32l5/stm32l5_hal.h"
+ 153:.././hal/hal.h **** #elif HAL_TYPE == HAL_stm32l4
+ 154:.././hal/hal.h ****     #include "stm32l4/stm32l4_hal.h"
+ 155:.././hal/hal.h **** #elif HAL_TYPE == HAL_rx65n
+ 156:.././hal/hal.h ****     #include "rx65n/rx65n_hal.h"
+ 157:.././hal/hal.h **** #elif HAL_TYPE == HAL_mpc5676r
+ 158:.././hal/hal.h ****     #include "mpc5676r/MPC5676R_hal.h"
+ 159:.././hal/hal.h **** #elif HAL_TYPE == HAL_neorv32
+ 160:.././hal/hal.h ****     #include "neorv32/neorv32_hal.h"
+ 161:.././hal/hal.h **** #elif HAL_TYPE == HAL_sam4s
+ 162:.././hal/hal.h ****     #include "sam4s/sam4s_hal.h"
+ 163:.././hal/hal.h **** #elif HAL_TYPE == HAL_ibex
+ 164:.././hal/hal.h ****     #include "ibex/ibex_hal.h"
+ 165:.././hal/hal.h **** #else
+ 166:.././hal/hal.h ****     #error "Unsupported HAL Type"
+ 167:.././hal/hal.h **** #endif
+ 168:.././hal/hal.h **** 
+ 169:.././hal/hal.h **** #if PLATFORM == CW308_MEGARF
+ 170:.././hal/hal.h ****     #undef trigger_setup
+ 171:.././hal/hal.h ****     #undef trigger_high
+ 172:.././hal/hal.h ****     #undef trigger_low
+ 173:.././hal/hal.h ****     #define trigger_setup() DDRD |= 0x02
+ 174:.././hal/hal.h ****     #define trigger_high()  PORTD |= 0x02
+ 175:.././hal/hal.h ****     #define trigger_low()   PORTD &= ~(0x02)
+ 176:.././hal/hal.h ****     
+ 177:.././hal/hal.h ****     #define HW_AES128_Init();      AES_CTRL = 0x00;
+ 178:.././hal/hal.h **** 
+ 179:.././hal/hal.h ****     #define HW_AES128_LoadKey(key);  for (uint8_t i = 0; i < 16; i++){ \
+ 180:.././hal/hal.h ****                                      AES_KEY = *(key+i); \
+ 181:.././hal/hal.h ****                                   }
+ 182:.././hal/hal.h **** 
+ 183:.././hal/hal.h ****     #define HW_AES128_Enc(pt);  for (uint8_t i = 0; i < 16; i++){ \
+ 184:.././hal/hal.h ****                                     AES_STATE = *(pt+i); \
+ 185:.././hal/hal.h ****                                 } \
+ 186:.././hal/hal.h ****                                   \
+ 187:.././hal/hal.h ****                                 AES_CTRL |= 1<<AES_REQUEST; \
+ 188:.././hal/hal.h ****                                   \
+ 189:.././hal/hal.h ****                                 /*Wait for done  */ \
+ 190:.././hal/hal.h ****                                 while ((AES_STATUS & (1<<AES_DONE)) == 0){ \
+ 191:.././hal/hal.h ****                                     ; \
+ 192:.././hal/hal.h ****                                 } \
+ 193:.././hal/hal.h ****                                   \
+ 194:.././hal/hal.h ****                                 for (uint8_t i = 0; i < 16; i++){ \
+ 195:.././hal/hal.h ****                                     *(pt+i) = AES_STATE; \
+ 196:.././hal/hal.h ****                                 }
+ 197:.././hal/hal.h ****     
+ 198:.././hal/hal.h **** #endif
+ 199:.././hal/hal.h **** 
+ 200:.././hal/hal.h **** __attribute__((weak)) void led_ok(unsigned int status)
+ 201:.././hal/hal.h **** {
+ 202:.././hal/hal.h **** }
+ 203:.././hal/hal.h **** 
+ 204:.././hal/hal.h **** __attribute__((weak)) void led_error(unsigned int status)
+ 205:.././hal/hal.h **** {
+  46              		.loc 1 205 1 view -0
+  47              		.cfi_startproc
+  48              		@ args = 0, pretend = 0, frame = 0
+  49              		@ frame_needed = 0, uses_anonymous_args = 0
+  50              		@ link register save eliminated.
+ 206:.././hal/hal.h **** }
+  51              		.loc 1 206 1 view .LVU1
+  52 0000 7047     		bx	lr
+  53              		.cfi_endproc
+  54              	.LFE1:
+  56              		.section	.text.gost_indep_init,"ax",%progbits
+  57              		.align	1
+  58              		.global	gost_indep_init
+  59              		.syntax unified
+  60              		.thumb
+  61              		.thumb_func
+  62              		.fpu softvfp
+  64              	gost_indep_init:
+  65              	.LFB2:
+  66              		.file 2 ".././crypto/gost-independant.c"
+   1:.././crypto/gost-independant.c **** #include "gost-independant.h"
+   2:.././crypto/gost-independant.c **** #include "hal.h"
+   3:.././crypto/gost-independant.c **** #include "gost.h"
+   4:.././crypto/gost-independant.c **** 
+   5:.././crypto/gost-independant.c **** uint8_t enckey[32];
+   6:.././crypto/gost-independant.c **** 
+   7:.././crypto/gost-independant.c **** void gost_indep_init(void)
+   8:.././crypto/gost-independant.c **** {
+  67              		.loc 2 8 1 view -0
+  68              		.cfi_startproc
+  69              		@ args = 0, pretend = 0, frame = 0
+  70              		@ frame_needed = 0, uses_anonymous_args = 0
+  71              		@ link register save eliminated.
+   9:.././crypto/gost-independant.c ****   ;
+  72              		.loc 2 9 3 view .LVU3
+  10:.././crypto/gost-independant.c **** }
+  73              		.loc 2 10 1 is_stmt 0 view .LVU4
+  74 0000 7047     		bx	lr
+  75              		.cfi_endproc
+  76              	.LFE2:
+  78              		.section	.text.gost_indep_key,"ax",%progbits
+  79              		.align	1
+  80              		.global	gost_indep_key
+  81              		.syntax unified
+  82              		.thumb
+  83              		.thumb_func
+  84              		.fpu softvfp
+  86              	gost_indep_key:
+  87              	.LVL1:
+  88              	.LFB3:
+  11:.././crypto/gost-independant.c **** 
+  12:.././crypto/gost-independant.c **** void gost_indep_key(uint8_t * key)
+  13:.././crypto/gost-independant.c **** {
+  89              		.loc 2 13 1 is_stmt 1 view -0
+  90              		.cfi_startproc
+  91              		@ args = 0, pretend = 0, frame = 0
+  92              		@ frame_needed = 0, uses_anonymous_args = 0
+  93              		@ link register save eliminated.
+  14:.././crypto/gost-independant.c ****   GOST_ECB_indp_setkey(key);
+  94              		.loc 2 14 3 view .LVU6
+  95 0000 FFF7FEBF 		b	GOST_ECB_indp_setkey
+  96              	.LVL2:
+  97              		.loc 2 14 3 is_stmt 0 view .LVU7
+  98              		.cfi_endproc
+  99              	.LFE3:
+ 101              		.section	.text.gost_indep_enc,"ax",%progbits
+ 102              		.align	1
+ 103              		.global	gost_indep_enc
+ 104              		.syntax unified
+ 105              		.thumb
+ 106              		.thumb_func
+ 107              		.fpu softvfp
+ 109              	gost_indep_enc:
+ 110              	.LVL3:
+ 111              	.LFB4:
+  15:.././crypto/gost-independant.c **** }
+  16:.././crypto/gost-independant.c **** 
+  17:.././crypto/gost-independant.c **** void gost_indep_enc(uint8_t * pt)
+  18:.././crypto/gost-independant.c **** {
+ 112              		.loc 2 18 1 is_stmt 1 view -0
+ 113              		.cfi_startproc
+ 114              		@ args = 0, pretend = 0, frame = 0
+ 115              		@ frame_needed = 0, uses_anonymous_args = 0
+ 116              		@ link register save eliminated.
+  19:.././crypto/gost-independant.c ****   GOST_ECB_indp_crypto(pt);
+ 117              		.loc 2 19 3 view .LVU9
+ 118 0000 FFF7FEBF 		b	GOST_ECB_indp_crypto
+ 119              	.LVL4:
+ 120              		.loc 2 19 3 is_stmt 0 view .LVU10
+ 121              		.cfi_endproc
+ 122              	.LFE4:
+ 124              		.section	.text.gost_indep_enc_pretrigger,"ax",%progbits
+ 125              		.align	1
+ 126              		.global	gost_indep_enc_pretrigger
+ 127              		.syntax unified
+ 128              		.thumb
+ 129              		.thumb_func
+ 130              		.fpu softvfp
+ 132              	gost_indep_enc_pretrigger:
+ 133              	.LVL5:
+ 134              	.LFB5:
+  20:.././crypto/gost-independant.c **** }
+  21:.././crypto/gost-independant.c **** 
+  22:.././crypto/gost-independant.c **** void gost_indep_enc_pretrigger(uint8_t * pt)
+  23:.././crypto/gost-independant.c **** {
+ 135              		.loc 2 23 1 is_stmt 1 view -0
+ 136              		.cfi_startproc
+ 137              		@ args = 0, pretend = 0, frame = 0
+ 138              		@ frame_needed = 0, uses_anonymous_args = 0
+ 139              		@ link register save eliminated.
+  24:.././crypto/gost-independant.c ****     ;
+ 140              		.loc 2 24 5 view .LVU12
+  25:.././crypto/gost-independant.c **** }
+ 141              		.loc 2 25 1 is_stmt 0 view .LVU13
+ 142 0000 7047     		bx	lr
+ 143              		.cfi_endproc
+ 144              	.LFE5:
+ 146              		.section	.text.gost_indep_enc_posttrigger,"ax",%progbits
+ 147              		.align	1
+ 148              		.global	gost_indep_enc_posttrigger
+ 149              		.syntax unified
+ 150              		.thumb
+ 151              		.thumb_func
+ 152              		.fpu softvfp
+ 154              	gost_indep_enc_posttrigger:
+ 155              	.LFB9:
+ 156              		.cfi_startproc
+ 157              		@ args = 0, pretend = 0, frame = 0
+ 158              		@ frame_needed = 0, uses_anonymous_args = 0
+ 159              		@ link register save eliminated.
+ 160 0000 7047     		bx	lr
+ 161              		.cfi_endproc
+ 162              	.LFE9:
+ 164              		.section	.text.gost_indep_mask,"ax",%progbits
+ 165              		.align	1
+ 166              		.global	gost_indep_mask
+ 167              		.syntax unified
+ 168              		.thumb
+ 169              		.thumb_func
+ 170              		.fpu softvfp
+ 172              	gost_indep_mask:
+ 173              	.LVL6:
+ 174              	.LFB7:
+  26:.././crypto/gost-independant.c **** 
+  27:.././crypto/gost-independant.c **** void gost_indep_enc_posttrigger(uint8_t * pt)
+  28:.././crypto/gost-independant.c **** {
+  29:.././crypto/gost-independant.c ****     ;
+  30:.././crypto/gost-independant.c **** }
+  31:.././crypto/gost-independant.c **** 
+  32:.././crypto/gost-independant.c **** void gost_indep_mask(uint8_t * m, uint8_t len)
+  33:.././crypto/gost-independant.c **** {
+ 175              		.loc 2 33 1 is_stmt 1 view -0
+ 176              		.cfi_startproc
+ 177              		@ args = 0, pretend = 0, frame = 0
+ 178              		@ frame_needed = 0, uses_anonymous_args = 0
+ 179              		@ link register save eliminated.
+  34:.././crypto/gost-independant.c **** }
+ 180              		.loc 2 34 1 view .LVU15
+ 181 0000 7047     		bx	lr
+ 182              		.cfi_endproc
+ 183              	.LFE7:
+ 185              		.global	enckey
+ 186              		.bss
+ 189              	enckey:
+ 190 0000 00000000 		.space	32
+ 190      00000000 
+ 190      00000000 
+ 190      00000000 
+ 190      00000000 
+ 191              		.text
+ 192              	.Letext0:
+ 193              		.file 3 "c:\\users\\vadim\\chipwh~1\\cw\\home\\portable\\armgcc\\arm-none-eabi\\include\\machine\\
+ 194              		.file 4 "c:\\users\\vadim\\chipwh~1\\cw\\home\\portable\\armgcc\\arm-none-eabi\\include\\sys\\_std
+ 195              		.file 5 ".././crypto/kuznyechik/gost.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 gost-independant.c
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:16     .text.change_ok_led:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:24     .text.change_ok_led:00000000 change_ok_led
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:35     .text.change_err_led:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:42     .text.change_err_led:00000000 change_err_led
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:57     .text.gost_indep_init:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:64     .text.gost_indep_init:00000000 gost_indep_init
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:79     .text.gost_indep_key:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:86     .text.gost_indep_key:00000000 gost_indep_key
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:102    .text.gost_indep_enc:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:109    .text.gost_indep_enc:00000000 gost_indep_enc
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:125    .text.gost_indep_enc_pretrigger:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:132    .text.gost_indep_enc_pretrigger:00000000 gost_indep_enc_pretrigger
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:147    .text.gost_indep_enc_posttrigger:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:154    .text.gost_indep_enc_posttrigger:00000000 gost_indep_enc_posttrigger
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:165    .text.gost_indep_mask:00000000 $t
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:172    .text.gost_indep_mask:00000000 gost_indep_mask
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:189    .bss:00000000 enckey
+C:\Users\Vadim\AppData\Local\Temp\ccG4hENz.s:190    .bss:00000000 $d
+
+UNDEFINED SYMBOLS
+GOST_ECB_indp_setkey
+GOST_ECB_indp_crypto
